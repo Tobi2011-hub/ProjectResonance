@@ -1,0 +1,134 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, HeartCrack, Lock, RotateCcw } from "lucide-react";
+import { ClearOverlay, GameCanvas } from "@/components/game/GameUI";
+import { getLevel } from "@/game/world";
+import { completeStage, isStageUnlocked, loadSave } from "@/game/core";
+
+export default function Stage() {
+  const { stage } = useParams();
+  const navigate = useNavigate();
+  const level = getLevel(stage);
+  const [save] = useState(() => loadSave());
+  const [runId, setRunId] = useState(0);
+  const [clear, setClear] = useState(null);
+  const [wiped, setWiped] = useState(false);
+
+  useEffect(() => {
+    if (!save) navigate("/customize?new=1");
+  }, [save, navigate]);
+
+  if (!save) return null;
+
+  if (!isStageUnlocked(save, level.id)) {
+    return (
+      <div className="pa-root flex min-h-screen flex-col items-center justify-center px-6 text-center">
+        <Lock className="h-8 w-8 text-[#c6d2f2]/30" />
+        <p className="pa-pixel mt-5 text-[11px] text-white">STAGE {level.id} LOCKED</p>
+        <p className="mt-3 max-w-sm text-sm tracking-wide text-[#c6d2f2]/50">
+          {level.starOf
+            ? `Collect all six stars on Stage ${level.starOf} — five pickups plus a deathless clear — to open this vault.`
+            : level.secretOf
+            ? `Collect all five stars on Stage ${level.secretOf} in a single run to open this rift.`
+            : "Clear the previous stage to open this node."}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate("/world")}
+          className="pa-pixel mt-6 border border-[#4be3ff] px-5 py-3 text-[9px] text-[#4be3ff]"
+        >
+          WORLD MAP
+        </button>
+      </div>
+    );
+  }
+
+  const handleComplete = (payload) => {
+    const result = completeStage(level.id, {
+      collected: payload.collected,
+      noDeath: payload.noDeath,
+      coins: payload.coins,
+      coinsTotal: payload.coinsTotal,
+    });
+    setClear({
+      stars: payload.stars,
+      noDeath: payload.noDeath,
+      unlockedSecret: result.unlockedSecret,
+      unlockedAbility: result.unlockedAbility,
+      abilityRank: result.abilityRank,
+      abilityUpgraded: result.abilityUpgraded,
+      unlockedWeapon: result.unlockedWeapon,
+      orbGain: result.orbGain,
+      coins: payload.coins,
+      coinsTotal: payload.coinsTotal,
+    });
+  };
+
+  return (
+    <div className="pa-root relative min-h-screen bg-[#05060d]">
+      <GameCanvas
+        key={runId}
+        level={level}
+        save={save}
+        onComplete={handleComplete}
+        onOutOfLives={() => setWiped(true)}
+        onRestart={() => setRunId((value) => value + 1)}
+        onQuit={() => navigate("/world")}
+      />
+      {clear ? (
+        <ClearOverlay
+          level={level}
+          stars={clear.stars}
+          noDeath={clear.noDeath}
+          unlockedSecret={clear.unlockedSecret}
+          unlockedAbility={clear.unlockedAbility}
+          abilityRank={clear.abilityRank}
+          abilityUpgraded={clear.abilityUpgraded}
+          unlockedWeapon={clear.unlockedWeapon}
+          orbGain={clear.orbGain}
+          coins={clear.coins}
+          coinsTotal={clear.coinsTotal}
+          onContinue={() => navigate("/world")}
+        />
+      ) : null}
+      {wiped ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#03040a] px-5 py-8">
+          <div className="relative w-full max-w-2xl overflow-hidden border border-[#ff3d8b]/40 bg-[#06070d] px-5 py-12 text-center shadow-[0_0_70px_rgba(255,61,139,0.12)] sm:px-12 sm:py-16">
+            <div className="pointer-events-none absolute inset-0 pa-scanlines opacity-40" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,transparent_49.8%,rgba(75,227,255,0.06)_50%,transparent_50.2%)]" />
+            <div className="relative">
+              <HeartCrack className="mx-auto h-8 w-8 text-[#ff3d8b]" />
+              <p className="pa-pixel mt-5 text-[8px] tracking-[0.3em] text-[#ff3d8b]/70">SIGNAL LOST · STAGE {String(level.id).padStart(2, "0")}</p>
+              <h2
+                className="pa-pixel pa-gameover-glitch mt-6 text-3xl leading-tight sm:text-5xl"
+                data-text="GAME OVER"
+              >
+                GAME OVER
+              </h2>
+              <p className="mt-4 text-sm tracking-[0.16em] text-[#c6d2f2]/55">Your run has ended. The mission remains available.</p>
+              <div className="mx-auto mt-8 flex max-w-sm flex-col justify-center gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWiped(false);
+                    setRunId((value) => value + 1);
+                  }}
+                  className="pa-pixel flex min-h-11 items-center justify-center gap-2 bg-[#ff3d8b] px-5 py-3 text-[8px] text-[#05060d] hover:bg-[#ff79ae]"
+                >
+                  <RotateCcw className="h-3 w-3" /> RETRY STAGE
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/world")}
+                  className="pa-pixel flex min-h-11 items-center justify-center gap-2 border border-[#4be3ff]/50 px-5 py-3 text-[8px] text-[#4be3ff] hover:bg-[#4be3ff]/10"
+                >
+                  <ArrowLeft className="h-3 w-3" /> WORLD MAP
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
