@@ -521,6 +521,14 @@ export function sfx(name) {
     case "buster":
       tone(1500, 0, 0.06, "square", 0.2, 700);
       break;
+    case "cyclone":
+      tone(720, 0, 0.16, "sawtooth", 0.2, 260);
+      tone(420, 0.08, 0.13, "triangle", 0.16, 760);
+      break;
+    case "seeker":
+      tone(360, 0, 0.1, "triangle", 0.22, 920);
+      tone(1120, 0.06, 0.08, "square", 0.12, 680);
+      break;
     case "explode":
       tone(140, 0, 0.24, "sawtooth", 0.3, 40);
       break;
@@ -857,6 +865,9 @@ export function loadSave(slot = getActiveSaveSlot()) {
 function normalize(parsed) {
   const base = createDefaultSave();
   const save = { ...base, ...parsed };
+  const migrateWeaponId = (id) => ({ scatter: "cyclone", nova: "seeker" }[id] || id);
+  save.primary = migrateWeaponId(save.primary);
+  save.secondary = migrateWeaponId(save.secondary);
   save.armor = { ...base.armor, ...(parsed.armor || {}) };
   save.settings = { ...base.settings, ...(parsed.settings || {}) };
   save.settings.controls = { ...DEFAULT_CONTROLS, ...((parsed.settings || {}).controls || {}) };
@@ -874,7 +885,9 @@ function normalize(parsed) {
   save.orbs = Math.max(0, Number(parsed.orbs) || 0);
   save.unlockedCharacters = Array.isArray(parsed.unlockedCharacters) ? parsed.unlockedCharacters : [];
   save.unlockedPalettes = Array.isArray(parsed.unlockedPalettes) ? parsed.unlockedPalettes : [];
-  save.unlockedWeapons = Array.isArray(parsed.unlockedWeapons) ? parsed.unlockedWeapons : [];
+  save.unlockedWeapons = Array.isArray(parsed.unlockedWeapons)
+    ? [...new Set(parsed.unlockedWeapons.map(migrateWeaponId))]
+    : [];
   return save;
 }
 

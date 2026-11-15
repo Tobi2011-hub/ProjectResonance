@@ -434,14 +434,8 @@ export default class GameEngine {
           overdrive: Number(this.abilities.overdrive) || 0,
           mult: this.damageMult * (this.player.damageBoost || 1),
         });
-        if (shot.kind === "blade") {
-          this.blades.push(shot);
-        } else if (type === "scatter") {
-          // one trigger pull, three pellets
-          [-70, 0, 70].forEach((vy) => this.bullets.push({ ...shot, vy }));
-        } else {
-          this.bullets.push(shot);
-        }
+        if (shot.kind === "blade") this.blades.push(shot);
+        else this.bullets.push(shot);
         if (def.maxAmmo) this.ammo[type] = Math.max(0, belt - 1);
 
         this.player.fireCd = COOLDOWN[type] * this.cooldownMult * (this.player.fireBoost || 1);
@@ -546,12 +540,64 @@ export default class GameEngine {
 
     this.bullets = this.bullets.filter((bullet) => {
       bullet.life -= dt;
-      bullet.x += bullet.vx * dt;
-      bullet.y += bullet.vy || 0;
       let alive = bullet.life > 0;
+
+      if (bullet.kind === "seeker") {
+        let target = null;
+        let nearest = bullet.homingRange;
+        const considerTarget = (candidate) => {
+          const dx = candidate.x + candidate.w / 2 - (bullet.x + bullet.w / 2);
+          const dy = candidate.y + candidate.h / 2 - (bullet.y + bullet.h / 2);
+          const distance = Math.hypot(dx, dy);
+          if (distance < nearest) {
+            nearest = distance;
+            target = candidate;
+          }
+        };
+        this.enemies.forEach((enemy) => {
+          if (enemy.alive) considerTarget(enemy);
+        });
+        if (this.boss?.active) considerTarget(this.boss);
+
+        if (target) {
+          const dx = target.x + target.w / 2 - (bullet.x + bullet.w / 2);
+          const dy = target.y + target.h / 2 - (bullet.y + bullet.h / 2);
+          const currentAngle = Math.atan2(bullet.vy, bullet.vx);
+          const targetAngle = Math.atan2(dy, dx);
+          const angleDelta = Math.atan2(
+            Math.sin(targetAngle - currentAngle),
+            Math.cos(targetAngle - currentAngle)
+          );
+          const angle = currentAngle + clamp(angleDelta, -bullet.turnRate * dt, bullet.turnRate * dt);
+          bullet.vx = Math.cos(angle) * bullet.speed;
+          bullet.vy = Math.sin(angle) * bullet.speed;
+          bullet.facing = bullet.vx < 0 ? -1 : 1;
+        }
+      }
+
+      if (bullet.kind === "boomerang" && bullet.returning) {
+        const dx = this.player.centerX - (bullet.x + bullet.w / 2);
+        const dy = this.player.centerY - (bullet.y + bullet.h / 2);
+        const distance = Math.hypot(dx, dy);
+        if (distance < 18) alive = false;
+        else {
+          bullet.vx = (dx / distance) * bullet.returnSpeed;
+          bullet.vy = (dy / distance) * bullet.returnSpeed;
+          bullet.x += bullet.vx * dt;
+          bullet.y += bullet.vy * dt;
+        }
+      } else {
+        bullet.x += bullet.vx * dt;
+        bullet.y += (bullet.vy || 0) * dt;
+        if (bullet.kind === "boomerang") {
+          bullet.travelled += bullet.speed * dt;
+          if (bullet.travelled >= bullet.maxDistance) bullet.returning = true;
+        }
+      }
 
       const rect = { x: bullet.x, y: bullet.y, w: bullet.w, h: bullet.h };
       for (const enemy of this.enemies) {
+        if (!alive) break;
         if (!enemy.alive || enemy.remove) continue;
         if (bullet.hits && bullet.hits.has(enemy)) continue;
         if (overlaps(rect, enemy)) {
@@ -563,36 +609,31 @@ export default class GameEngine {
           }
         }
       }
-      if (alive && this.boss && this.boss.active && overlaps(rect, this.boss)) {
+      if (alive && this.boss && this.boss.active && !(bullet.kind === "boomerang" && bullet.bossHit) && overlaps(rect, this.boss)) {
         const killed = this.boss.damage(bullet.damage);
         this.hitBoss(bullet.x, bullet.y);
+        if (bullet.kind === "boomerang") bullet.bossHit = true;
         if (killed) this.onBossDefeated();
         if (!bullet.pierce) alive = false;
       }
       if (alive) {
         const probeX = bullet.vx > 0 ? bullet.x + bullet.w : bullet.x;
-        if (this.world.solidPx(probeX, bullet.y + bullet.h / 2)) alive = false;
+        if (this.world.solidPx(probeX, bullet.y + bullet.h / 2)) {
+          if (bullet.kind === "boomerang" && !bullet.returning) {
+            bullet.x -= bullet.vx * dt;
+            bullet.y -= bullet.vy * dt;
+            bullet.travelled = Math.max(0, bullet.travelled - bullet.speed * dt);
+            bullet.vx = 0;
+            bullet.vy = 0;
+            bullet.returning = true;
+          } else {
+            alive = false;
+          }
+        }
         if (bullet.x < this.camera.x - 60 || bullet.x > this.camera.x + VIEW_W + 60) alive = false;
       }
       if (!alive && (bullet.detonate || bullet.kind === "plasma")) {
         this.detonate(bullet);
-        // Nova: the orb breaks into two smaller bolts on detonation
-        if (bullet.split) {
-          [-120, 120].forEach((vy) => {
-            this.bullets.push({
-              ...bullet,
-              split: 0,
-              detonate: false,
-              life: 0.6,
-              vy,
-              vx: bullet.vx * 0.6,
-              y: bullet.y - 6,
-              h: 10,
-              w: 10,
-              damage: Math.round(bullet.damage * 0.6),
-            });
-          });
-        }
       }
       return alive;
     });

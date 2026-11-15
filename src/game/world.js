@@ -331,7 +331,7 @@ function buildStage(cfg) {
     const count = Math.max(1, Math.floor(span.len / 18));
     for (let k = 0; k < count; k += 1) {
       const ex = span.x + 2 + Math.floor(((span.len - 3) * (k + 0.5)) / count);
-      const variants = ["standard", "shielded", "flyer", "armored", "gunner"];
+      const variants = ["standard", "shielded", "flyer", "armored", "gunner", "exo"];
       const variant = variants[(enemies.length + cfg.id) % variants.length];
       enemies.push({ x: ex, y: span.top, minX: span.x + 1, maxX: span.end - 1, variant });
     }
@@ -1164,6 +1164,21 @@ export function drawEnemies(ctx, engine) {
       ctx.arc(dx + size / 2, dy + size / 2, size * 0.62, 0, Math.PI * 2);
       ctx.stroke();
     }
+    if (enemy.shieldHp > 0) {
+      ctx.globalAlpha = 0.7 + Math.sin(enemy.animTime * 8) * 0.2;
+      ctx.strokeStyle = enemy.variantStyle.accent;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let point = 0; point < 6; point += 1) {
+        const angle = (Math.PI / 3) * point - Math.PI / 6;
+        const px = dx + size / 2 + Math.cos(angle) * size * 0.58;
+        const py = dy + size / 2 + Math.sin(angle) * size * 0.58;
+        if (point === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
     if (enemy.flash > 0) {
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = 0.55;
@@ -1177,7 +1192,7 @@ export function drawEnemies(ctx, engine) {
       const pct = Math.max(0, enemy.hp / enemy.maxHp);
       const bw = 30;
       const bx = Math.round(enemy.x + enemy.w / 2 - bw / 2 - camera.x);
-      const by = Math.round(enemy.y - 10);
+      const by = Math.round(enemy.y - 10 - (enemy.shieldHp > 0 ? 5 : 0));
       ctx.fillStyle = "#05060d";
       ctx.fillRect(bx - 1, by - 1, bw + 2, 5);
       ctx.fillStyle = "#242a48";
@@ -1186,6 +1201,15 @@ export function drawEnemies(ctx, engine) {
         ? pct > 0.5 ? "#7af6c8" : pct > 0.25 ? "#ffd166" : "#ff3d8b"
         : enemy.variantStyle.accent;
       ctx.fillRect(bx, by, Math.max(1, Math.round(bw * pct)), 3);
+      if (enemy.maxShieldHp > 0 && enemy.shieldHp > 0) {
+        const shieldY = by - 5;
+        ctx.fillStyle = "#05060d";
+        ctx.fillRect(bx - 1, shieldY - 1, bw + 2, 5);
+        ctx.fillStyle = "#173b50";
+        ctx.fillRect(bx, shieldY, bw, 3);
+        ctx.fillStyle = enemy.variantStyle.accent;
+        ctx.fillRect(bx, shieldY, Math.max(1, Math.round(bw * enemy.shieldHp / enemy.maxShieldHp)), 3);
+      }
     }
   });
 }
@@ -1284,6 +1308,28 @@ export function drawPlayer(ctx, engine) {
     ctx.globalAlpha = firing ? 0.95 : 0.5;
     ctx.fillRect(4, -1, firing ? 26 : 13, 1);
     ctx.globalAlpha = 1;
+  } else if (info.id === "cyclone") {
+    ctx.beginPath();
+    ctx.moveTo(3, -4);
+    ctx.lineTo(13, -5);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(13, 5);
+    ctx.lineTo(3, 4);
+    ctx.lineTo(8, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(10, -1, 4, 2);
+  } else if (info.id === "seeker") {
+    ctx.fillRect(3, -3, 12, 6);
+    ctx.beginPath();
+    ctx.moveTo(15, -3);
+    ctx.lineTo(20, 0);
+    ctx.lineTo(15, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(7, -1, 7, 2);
   } else if (info.category === "mid") {
     ctx.beginPath();
     ctx.arc(firing ? 12 : 7, 0, firing ? 5 : 3, 0, Math.PI * 2);

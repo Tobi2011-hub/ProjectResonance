@@ -4,7 +4,7 @@
  *  the walking enemy and the Void Core boss. (Four former files, one place.)
  * ============================================================================
  *  SECTIONS:
- *    1. WEAPONS   three classes: Blade, Plasma, Buster (+ how shots are drawn)
+ *    1. WEAPONS   firing behavior and projectile rendering
  *    2. PLAYER    movement, jumping, wall-slide, dash, glide, shooting, damage
  *    3. ENEMY     the patrolling robot
  *    4. BOSS      the Void Core at the end of Stage 10
@@ -54,31 +54,54 @@ export const ENEMY_VARIANTS = {
     name: "Patroller",
     body: "#59616b",
     accent: "#c5b49b",
-    description: "A standard patrol bot. Defeat it to recover a little ammo.",
+    speed: 64,
+    maxHp: 110,
+    description: "A fast patrol bot with reinforced plating. Defeat it to recover ammo.",
   },
   shielded: {
     name: "Phase Guard",
     body: "#704624",
     accent: "#e9a85d",
-    description: "Cycles between vulnerable and invincible phases. Wait for its shield to fade.",
+    speed: 58,
+    maxHp: 150,
+    contactMultiplier: 1.25,
+    description: "Cycles between vulnerable and invincible phases, and hits harder on contact.",
   },
   flyer: {
     name: "Drifter",
     body: "#465263",
     accent: "#c4b99e",
-    description: "Hovers above the ground and patrols the upper route.",
+    speed: 68,
+    maxHp: 125,
+    description: "A fast, durable flyer that patrols the upper route.",
   },
   armored: {
     name: "Bulwark",
     body: "#713d32",
     accent: "#d99b69",
-    description: "Has twice the standard health and deals 1.7x contact damage.",
+    speed: 42,
+    maxHp: 240,
+    contactMultiplier: 2,
+    description: "A heavily armored tank with high health and double contact damage.",
   },
   gunner: {
     name: "Marksman",
     body: "#596044",
     accent: "#c2b77b",
-    description: "Fires aimed energy bolts when you come within range.",
+    speed: 50,
+    maxHp: 150,
+    contactMultiplier: 1.25,
+    description: "Fires fast, high-damage aimed energy bolts from long range.",
+  },
+  exo: {
+    name: "Exo Guard",
+    body: "#244e62",
+    accent: "#51e5ff",
+    speed: 54,
+    maxHp: 200,
+    shieldHp: 160,
+    contactMultiplier: 1.5,
+    description: "An exo shield absorbs every hit until it breaks; only then can its health be damaged.",
   },
 };
 
@@ -129,21 +152,45 @@ export function fireWeapon(type, player, { overdrive = false, mult = 1 } = {}) {
     };
   }
 
-  // Scatter is a mid-range weapon but fires three plain pellets, not an orb:
-  // it must be handled before the generic mid-range branch.
-  if (def.id === "scatter") {
+  if (def.id === "cyclone") {
     return {
-      kind: "buster",
-      weapon: "scatter",
+      kind: "boomerang",
+      weapon: "cyclone",
       x: player.x + (facing > 0 ? player.w : -12),
-      y: player.y + player.h * 0.45 - 4,
-      w: 10,
-      h: 8,
-      vx: facing * 330,
+      y: player.y + player.h * 0.45 - 8,
+      w: 16,
+      h: 16,
+      vx: facing * 390,
       vy: 0,
-      life: 0.55,
+      speed: 390,
+      returnSpeed: 460,
+      maxDistance: 260,
+      travelled: 0,
+      returning: false,
+      life: 2.2,
       facing,
-      pierce: false,
+      pierce: true,
+      hits: new Set(),
+      damage,
+      color: def.color,
+    };
+  }
+
+  if (def.id === "seeker") {
+    return {
+      kind: "seeker",
+      weapon: "seeker",
+      x: originX,
+      y: originY,
+      w: 14,
+      h: 8,
+      vx: facing * 320,
+      vy: 0,
+      speed: 320,
+      turnRate: 5.2,
+      homingRange: 520,
+      life: 2.2,
+      facing,
       damage,
       color: def.color,
     };
@@ -157,15 +204,13 @@ export function fireWeapon(type, player, { overdrive = false, mult = 1 } = {}) {
       y: originY,
       w: 14,
       h: 14,
-      vx: facing * (def.id === "nova" ? 240 : 215),
+      vx: facing * 215,
       vy: 0,
       life: 0.95,
       facing,
       damage,
       color: def.color,
       detonate: true,
-      split: def.split || 0,
-      radius: def.id === "nova" ? 30 : 38,
     };
   }
 
@@ -240,7 +285,42 @@ export function drawBullet(ctx, bullet, camX, camY) {
   const x = bullet.x - camX;
   const y = bullet.y - camY;
   ctx.save();
-  if (bullet.kind === "plasma") {
+  if (bullet.kind === "boomerang") {
+    ctx.translate(x + bullet.w / 2, y + bullet.h / 2);
+    ctx.rotate(Math.atan2(bullet.vy, bullet.vx) + bullet.life * 11);
+    ctx.shadowColor = bullet.color;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = bullet.color;
+    ctx.beginPath();
+    ctx.moveTo(-10, -5);
+    ctx.lineTo(1, -8);
+    ctx.lineTo(10, 0);
+    ctx.lineTo(1, 8);
+    ctx.lineTo(-10, 5);
+    ctx.lineTo(-3, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(-2, -2, 5, 4);
+  } else if (bullet.kind === "seeker") {
+    ctx.translate(x + bullet.w / 2, y + bullet.h / 2);
+    ctx.rotate(Math.atan2(bullet.vy, bullet.vx));
+    ctx.shadowColor = bullet.color;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = bullet.color;
+    ctx.fillRect(-6, -4, 12, 8);
+    ctx.beginPath();
+    ctx.moveTo(6, -4);
+    ctx.lineTo(11, 0);
+    ctx.lineTo(6, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(-2, -2, 7, 4);
+    ctx.fillStyle = bullet.color;
+    ctx.fillRect(-10, -2, 4, 4);
+  } else if (bullet.kind === "plasma") {
     const r = 9 + Math.sin(bullet.life * 46) * 1.4;
     const gradient = ctx.createRadialGradient(x + 6, y + 6, 1, x + 6, y + 6, r * 2.4);
     gradient.addColorStop(0, "#ffffff");
@@ -654,8 +734,8 @@ export class Player {
 }
 
 // ---------------------------------------------------------------------------
-//  3. ENEMY — patrols, turns at edges/walls, hurts on contact.
-//  TUNE: `speed` below and the sprite/size values in the constructor.
+//  3. ENEMY — variant stats and abilities for every stage adversary.
+//  TUNE: variant values in ENEMY_VARIANTS and behavior in Enemy.update().
 // ---------------------------------------------------------------------------
 
 export class Enemy {
@@ -672,15 +752,17 @@ export class Enemy {
     this.vx = 0;
     this.vy = 0;
     this.dir = Math.random() > 0.5 ? 1 : -1;
-    this.speed = 42;
-    this.maxHp = this.variant === "armored" ? 140 : 70;
+    this.speed = this.variantStyle.speed;
+    this.maxHp = this.variantStyle.maxHp;
     this.hp = this.maxHp;
+    this.shieldHp = this.variantStyle.shieldHp || 0;
+    this.maxShieldHp = this.shieldHp;
     this.flyer = this.variant === "flyer";
     if (this.flyer) this.baseY -= TILE * 4;
     this.flyPhase = Math.random() * Math.PI * 2;
     this.phaseTime = Math.random() * 3.4;
     this.invulnerable = false;
-    this.shotCooldown = 1.4 + Math.random() * 1.2;
+    this.shotCooldown = 0.9 + Math.random() * 0.7;
     this.flash = 0;
     this.hitStun = 0;
     this.hitDir = 0;
@@ -733,8 +815,8 @@ export class Enemy {
     }
 
     if (this.variant === "shielded") {
-      this.phaseTime = (this.phaseTime + dt) % 3.4;
-      this.invulnerable = this.phaseTime < 1.4;
+      this.phaseTime = (this.phaseTime + dt) % 3;
+      this.invulnerable = this.phaseTime < 1.7;
     }
 
     let shot = null;
@@ -742,25 +824,25 @@ export class Enemy {
       this.shotCooldown -= dt;
       const dx = player.centerX - (this.x + this.w / 2);
       const dy = player.centerY - (this.y + this.h / 2);
-      if (this.shotCooldown <= 0 && Math.hypot(dx, dy) < 360) {
+      if (this.shotCooldown <= 0 && Math.hypot(dx, dy) < 460) {
         const angle = Math.atan2(dy, dx);
         shot = {
           kind: "enemy",
           x: this.x + this.w / 2,
           y: this.y + this.h / 2,
-          vx: Math.cos(angle) * 205,
-          vy: Math.sin(angle) * 205,
+          vx: Math.cos(angle) * 300,
+          vy: Math.sin(angle) * 300,
           r: 5,
           life: 3,
-          damage: 4,
+          damage: 65,
           color: this.variantStyle.accent,
         };
-        this.shotCooldown = 2.2;
+        this.shotCooldown = 1.7;
       }
     }
 
     if (player && !player.dead && overlaps(this, player) && player.invuln <= 0) {
-      const damage = this.variant === "armored" ? Math.round(ENEMY_DAMAGE * 1.7) : ENEMY_DAMAGE;
+      const damage = Math.round(ENEMY_DAMAGE * (this.variantStyle.contactMultiplier || 1));
       const dealt = player.hurt(damage, this.x + this.w / 2);
       if (dealt) sfx("hit");
     }
@@ -770,6 +852,13 @@ export class Enemy {
   damage(amount, fromX) {
     if (this.dying) return false;
     if (this.invulnerable) return false;
+    if (this.shieldHp > 0) {
+      this.shieldHp = Math.max(0, this.shieldHp - amount);
+      this.flash = 0.28;
+      this.hitStun = 0.12;
+      this.hitDir = Math.sign(this.x + this.w / 2 - fromX) || 1;
+      return false;
+    }
     this.hp -= amount;
     this.flash = 0.28;
     this.hitStun = 0.12;

@@ -48,17 +48,16 @@ export const WEAPONS = {
     color: "#6ad1ff",
     description: "High-speed laser round that pierces everything it touches.",
   },
-  scatter: {
-    id: "scatter",
-    name: "Scatter",
+  cyclone: {
+    id: "cyclone",
+    name: "Cyclone",
     range: "Mid-Range",
     category: "mid",
-    cooldown: 0.7,
-    damage: 11,
-    pellets: 3,
-    maxAmmo: 26,
+    cooldown: 0.62,
+    damage: 28,
+    maxAmmo: 30,
     color: "#ffb347",
-    description: "Three-pellet burst. Wide, forgiving, hungry on ammo.",
+    description: "Throw a piercing energy disc that sweeps through enemies and returns to you.",
   },
 
   // --- coin-challenge rewards ----------------------------------------------
@@ -74,17 +73,16 @@ export const WEAPONS = {
     description: "Charged lance. One shot punches through a whole line.",
     unlock: 1,
   },
-  nova: {
-    id: "nova",
-    name: "Nova",
+  seeker: {
+    id: "seeker",
+    name: "Seeker",
     range: "Mid-Range",
     category: "mid",
-    cooldown: 0.55,
-    damage: 22,
-    split: 2,
-    maxAmmo: 28,
+    cooldown: 0.72,
+    damage: 42,
+    maxAmmo: 24,
     color: "#a78bfa",
-    description: "Unstable orb that detonates and splits into two bolts.",
+    description: "Launch a guided missile that turns toward the nearest enemy.",
     unlock: 3,
   },
   lance: {
@@ -105,13 +103,13 @@ export const WEAPONS = {
 export const WEAPON_TYPES = WEAPONS;
 
 /** Display / cycling order in every menu. */
-export const WEAPON_ORDER = ["blade", "plasma", "buster", "scatter", "rail", "nova", "lance"];
+export const WEAPON_ORDER = ["blade", "plasma", "buster", "cyclone", "rail", "seeker", "lance"];
 
 /** The four you own from the start. */
-export const BASE_WEAPONS = ["blade", "plasma", "buster", "scatter"];
+export const BASE_WEAPONS = ["blade", "plasma", "buster", "cyclone"];
 
 /** Coin challenge stage → weapon it unlocks (get every coin in one run). */
-export const CHALLENGE_WEAPONS = { 1: "rail", 3: "nova", 5: "lance" };
+export const CHALLENGE_WEAPONS = { 1: "rail", 3: "seeker", 5: "lance" };
 
 export const isAmmoWeapon = (id) => Boolean(WEAPONS[id]?.maxAmmo);
 

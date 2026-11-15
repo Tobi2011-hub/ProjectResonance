@@ -120,10 +120,12 @@ section 3 (INPUT). Players can still rebind everything in Settings.
 `entities.js`, section 1 (WEAPONS).
 
 **Change an enemy variant.** `ENEMY_VARIANTS` and the `Enemy` class in
-`entities.js` define enemy colours and abilities. `buildStage()` in `world.js`
-assigns variants to generated patrols; `drawEnemies()` tints their shared
-sprites. The Settings screen's **Field Manual** describes the controls,
-collectibles and enemy abilities for players.
+`entities.js` define enemy stats, colours and abilities. Exo Guards have a
+separate shield pool: attacks must deplete it before damaging their health.
+`buildStage()` in `world.js` assigns variants to generated patrols;
+`drawEnemies()` tints their shared sprites and shows shield status. The
+Settings screen's **Field Manual** describes the controls, collectibles and
+enemy abilities for players.
 
 ## 6. Things to be careful with
 
