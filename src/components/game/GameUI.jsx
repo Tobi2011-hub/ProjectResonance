@@ -4,7 +4,7 @@
  * and the stage-clear card.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Gem, Pause, Play, RotateCcw, Settings, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, Gem, Maximize, Minimize, Pause, Play, RotateCcw, Settings, Sparkles, Trophy } from "lucide-react";
 import { loadAssets } from "@/game/world";
 import {
   ABILITIES,
@@ -179,11 +179,16 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
   const [narrative, setNarrative] = useState(null);
   const [paused, setPaused] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [displayNotice, setDisplayNotice] = useState("");
   const [settings, setSettings] = useState(() => ({
     master: 1,
     music: 0.45,
     sfx: 0.7,
     shake: true,
+    touchControls: true,
+    touchControlMode: "joystick",
+    mobileOrientation: "landscape",
     ...(save?.settings || {}),
   }));
 
@@ -237,6 +242,56 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
     [paused]
   );
 
+  const enterFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) return;
+    const target = document.documentElement;
+    if (!target?.requestFullscreen) {
+      setDisplayNotice("Fullscreen is unavailable in this browser.");
+      return false;
+    }
+
+    try {
+      await target.requestFullscreen();
+      const orientation = window.screen?.orientation;
+      if (orientation?.lock) {
+        try {
+          await orientation.lock(settings.mobileOrientation || "landscape");
+          setDisplayNotice("");
+        } catch {
+          setDisplayNotice("Fullscreen is active, but this browser cannot lock orientation.");
+        }
+      } else {
+        setDisplayNotice("Fullscreen is active; use your device settings to change orientation.");
+      }
+      return true;
+    } catch {
+      setDisplayNotice("Tap the fullscreen button again or use a browser that supports fullscreen.");
+      return false;
+    }
+  }, [settings.mobileOrientation]);
+
+  const toggleGameFullscreen = useCallback(async () => {
+    if (document.fullscreenElement === document.documentElement) {
+      try {
+        await document.exitFullscreen();
+        window.screen?.orientation?.unlock?.();
+        setDisplayNotice("");
+        return true;
+      } catch {
+        setDisplayNotice("Fullscreen could not be exited.");
+        return false;
+      }
+    }
+    return enterFullscreen();
+  }, [enterFullscreen]);
+
+  useEffect(() => {
+    const syncFullscreen = () => setFullscreen(document.fullscreenElement === document.documentElement);
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    syncFullscreen();
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, []);
+
   const applySettings = useCallback(
     (patch) => {
       const merged = {
@@ -249,6 +304,15 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
       document.documentElement.classList.toggle("pa-high-contrast", Boolean(merged.highContrast));
       if (engineRef.current) engineRef.current.settings = merged;
       writeSave({ settings: merged });
+      if (patch.mobileOrientation && document.fullscreenElement === document.documentElement) {
+        try {
+          window.screen?.orientation?.lock?.(patch.mobileOrientation).catch(() => {
+            setDisplayNotice("Saved orientation preference; this browser could not apply it.");
+          });
+        } catch {
+          setDisplayNotice("Saved orientation preference; this browser could not apply it.");
+        }
+      }
     },
     [settings]
   );
@@ -275,14 +339,16 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
   };
 
   return (
-    <div className={`pa-root flex min-h-[100dvh] touch-none flex-col items-center justify-center overflow-hidden px-0 py-0 sm:px-4 sm:py-3 ${settings.highContrast ? "pa-high-contrast" : ""}`}>
-      <div className="relative w-full max-w-[1180px]">
+    <div
+      className={`pa-root pa-game-root flex min-h-[100dvh] touch-none flex-col items-center justify-center overflow-hidden px-0 py-0 sm:px-4 sm:py-3 ${settings.highContrast ? "pa-high-contrast" : ""}`}
+    >
+      <div className="pa-game-shell relative w-full max-w-[1180px]">
         <div
-          className="pa-panel relative mx-auto overflow-hidden bg-[#05060d]"
+          className="pa-game-stage pa-panel relative mx-auto overflow-hidden bg-[#05060d]"
           style={{
             aspectRatio: `${VIEW_W} / ${VIEW_H}`,
             // let the stage itself take more of the screen while keeping the HUD compact
-            width: "min(100%, calc((100dvh - 1.5rem) * 1.7647))",
+            width: fullscreen ? "min(100vw, calc(100dvh * 1.7647))" : "min(100%, calc((100dvh - 1.5rem) * 1.7647))",
           }}
         >
           <canvas
@@ -296,17 +362,37 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
 
           <button
             type="button"
+            onClick={toggleGameFullscreen}
+            aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="pa-touch-only pa-touch-fullscreen absolute left-2 top-16 z-30 grid h-10 w-10 place-items-center border border-white/20 bg-[#0a0d1c]/70 text-white/70 backdrop-blur-sm"
+          >
+            {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </button>
+
+          <button
+            type="button"
             onClick={() => togglePause()}
             aria-label="Pause"
-            className="absolute right-2 top-16 z-30 grid h-9 w-9 place-items-center border border-white/20 bg-[#0a0d1c]/70 text-white/70 backdrop-blur-sm md:hidden"
+            className="pa-touch-only absolute right-2 top-28 z-30 grid h-10 w-10 place-items-center border border-white/20 bg-[#0a0d1c]/70 text-white/70 backdrop-blur-sm"
           >
             <Pause className="h-4 w-4" />
           </button>
 
-          <TouchControls engine={engineRef} enabled={settings.touchControls !== false} />
+          <TouchControls
+            engine={engineRef}
+            enabled={settings.touchControls !== false}
+            controlMode={settings.touchControlMode}
+            onControlModeChange={(touchControlMode) => applySettings({ touchControlMode })}
+            onFirstInput={enterFullscreen}
+          />
+          {displayNotice ? (
+            <p role="status" className="pointer-events-none absolute inset-x-14 top-16 z-30 text-center text-[10px] text-[#ffd166]">
+              {displayNotice}
+            </p>
+          ) : null}
           <NarrativeBox narrative={narrative} onClose={closeNarrative} />
 
-          <div className="pointer-events-none absolute bottom-3 right-3 hidden text-right md:block">
+          <div className="pa-desktop-only pointer-events-none absolute bottom-3 right-3 hidden text-right md:block">
             <p className="pa-pixel text-[6px] leading-4 text-white/30">
               {keyLabel(controls.jump)} JUMP · {keyLabel(controls.fire)} FIRE · {keyLabel(controls.dash)} DASH
             </p>
@@ -316,7 +402,12 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
           {paused ? (
             <div className="absolute inset-0 z-40 flex items-center justify-center overflow-y-auto bg-[#05060d]/88 px-4 py-6 backdrop-blur-sm">
               {showSettings ? (
-                <SettingsPanel settings={settings} onChange={applySettings} onBack={() => setShowSettings(false)} />
+                <SettingsPanel
+                  settings={settings}
+                  onChange={applySettings}
+                  onBack={() => setShowSettings(false)}
+                  onFullscreenToggle={toggleGameFullscreen}
+                />
               ) : (
                 <div className="pa-fade-up w-[300px] max-w-full">
                   <p className="pa-pixel text-center text-[8px] text-[#4be3ff]/70">SYSTEM PAUSED</p>
@@ -359,7 +450,7 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
             </div>
           ) : null}
         </div>
-        <p className="pa-pixel mt-2 hidden text-center text-[6px] text-[#c6d2f2]/25 sm:block">
+        <p className="pa-desktop-only pa-pixel mt-2 hidden text-center text-[6px] text-[#c6d2f2]/25 sm:block">
           PROJECT: RESONANCE · STAGE {String(level.id).padStart(2, "0")} · {level.name}
         </p>
       </div>

@@ -19,6 +19,7 @@ import {
   BOSS_DAMAGE,
   COYOTE,
   ENEMY_DAMAGE,
+  ENEMY_HEALTH_MULTIPLIER,
   DASH_COOLDOWN,
   DASH_SPEED,
   DASH_TIME,
@@ -55,7 +56,7 @@ export const ENEMY_VARIANTS = {
     body: "#59616b",
     accent: "#c5b49b",
     speed: 64,
-    maxHp: 110,
+    maxHp: Math.round(110 * ENEMY_HEALTH_MULTIPLIER),
     description: "A fast patrol bot with reinforced plating. Defeat it to recover ammo.",
   },
   shielded: {
@@ -63,7 +64,7 @@ export const ENEMY_VARIANTS = {
     body: "#704624",
     accent: "#e9a85d",
     speed: 58,
-    maxHp: 150,
+    maxHp: Math.round(150 * ENEMY_HEALTH_MULTIPLIER),
     contactMultiplier: 1.25,
     description: "Cycles between vulnerable and invincible phases, and hits harder on contact.",
   },
@@ -72,7 +73,7 @@ export const ENEMY_VARIANTS = {
     body: "#465263",
     accent: "#c4b99e",
     speed: 68,
-    maxHp: 125,
+    maxHp: Math.round(125 * ENEMY_HEALTH_MULTIPLIER),
     description: "A fast, durable flyer that patrols the upper route.",
   },
   armored: {
@@ -80,7 +81,7 @@ export const ENEMY_VARIANTS = {
     body: "#713d32",
     accent: "#d99b69",
     speed: 42,
-    maxHp: 240,
+    maxHp: Math.round(240 * ENEMY_HEALTH_MULTIPLIER),
     contactMultiplier: 2,
     description: "A heavily armored tank with high health and double contact damage.",
   },
@@ -89,7 +90,7 @@ export const ENEMY_VARIANTS = {
     body: "#596044",
     accent: "#c2b77b",
     speed: 50,
-    maxHp: 150,
+    maxHp: Math.round(150 * ENEMY_HEALTH_MULTIPLIER),
     contactMultiplier: 1.25,
     description: "Fires fast, high-damage aimed energy bolts from long range.",
   },
@@ -98,8 +99,8 @@ export const ENEMY_VARIANTS = {
     body: "#244e62",
     accent: "#51e5ff",
     speed: 54,
-    maxHp: 200,
-    shieldHp: 160,
+    maxHp: Math.round(200 * ENEMY_HEALTH_MULTIPLIER),
+    shieldHp: Math.round(160 * ENEMY_HEALTH_MULTIPLIER),
     contactMultiplier: 1.5,
     description: "An exo shield absorbs every hit until it breaks; only then can its health be damaged.",
   },
@@ -834,7 +835,7 @@ export class Enemy {
           vy: Math.sin(angle) * 300,
           r: 5,
           life: 3,
-          damage: 65,
+          damage: Math.round(65 * ENEMY_HEALTH_MULTIPLIER),
           color: this.variantStyle.accent,
         };
         this.shotCooldown = 1.7;
@@ -891,8 +892,8 @@ export class Boss {
     this.minX = (arena?.minX ?? 0) * TILE;
     this.maxX = (arena?.maxX ?? 42) * TILE;
     this.groundY = groundRow * TILE;
-    this.hp = 1800;
-    this.maxHp = 1800;
+    this.hp = Math.round(1800 * ENEMY_HEALTH_MULTIPLIER);
+    this.maxHp = this.hp;
     this.defense = 0.28;
     this.state = "dormant";
     this.next = null;

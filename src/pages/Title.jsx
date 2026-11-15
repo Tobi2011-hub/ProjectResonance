@@ -269,7 +269,16 @@ export default function Title() {
           )}
           {panel === "settings" && (
             <SettingsPanel
-              settings={save?.settings || { master: 1, music: 0.45, sfx: 0.7, shake: true, touchControls: true, highContrast: false }}
+              settings={save?.settings || {
+                master: 1,
+                music: 0.45,
+                sfx: 0.7,
+                shake: true,
+                touchControls: true,
+                touchControlMode: "joystick",
+                mobileOrientation: "landscape",
+                highContrast: false,
+              }}
               onChange={updateSettings}
               onBack={() => setPanel(null)}
             />

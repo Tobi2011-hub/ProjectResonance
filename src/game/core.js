@@ -124,11 +124,15 @@ export const STARS_COLLECTIBLE = 5;
 /** 5 placed stars + 1 hidden "no-death" star = 6 per stage. */
 export const STARS_TOTAL = 6;
 
+/** Global enemy tuning: reduce all enemy health and damage by 40%. */
+export const ENEMY_HEALTH_MULTIPLIER = 0.6;
+export const ENEMY_DAMAGE_MULTIPLIER = 0.6;
+
 /** Damage a normal enemy contact deals. */
-export const ENEMY_DAMAGE = 120;
+export const ENEMY_DAMAGE = Math.round(120 * ENEMY_DAMAGE_MULTIPLIER);
 
 /** Damage the boss body deals. */
-export const BOSS_DAMAGE = 160;
+export const BOSS_DAMAGE = Math.round(160 * ENEMY_DAMAGE_MULTIPLIER);
 
 /** Damage from spikes, saws, traps, lava and pits. */
 export const SPIKE_DAMAGE = 110;
@@ -814,6 +818,8 @@ export const createDefaultSave = () => ({
     sfx: 0.7,
     shake: true,
     touchControls: true,
+    touchControlMode: "joystick",
+    mobileOrientation: "landscape",
     highContrast: false,
     controls: { ...DEFAULT_CONTROLS },
   },

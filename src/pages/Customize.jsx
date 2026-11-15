@@ -84,13 +84,13 @@ export default function Customize() {
     setLeaving(true);
     if (isExistingSave) {
       writeSave({ primary, secondary });
-      setTimeout(() => navigate("/world"), 620);
+      setTimeout(() => navigate("/world"), 1600);
       return;
     }
     clearSave();
     const chosen = palettes[armorPick]?.locked ? palettes[0] : armor;
     writeSave({ character, armor: { body: chosen.body, accent: chosen.accent }, primary, secondary });
-    setTimeout(() => navigate("/stage/1"), 620);
+    setTimeout(() => navigate("/stage/1"), 1000);
   };
 
   useEffect(() => {
@@ -316,7 +316,7 @@ export default function Customize() {
                     rows[focus] === "start" ? "bg-[#ff3d8b] text-[#05060d]" : "bg-[#4be3ff] text-[#05060d]"
                   }`}
                 >
-                  <Play className="h-3 w-3" /> START MISSION
+                  <Play className="h-3 w-3" /> {isExistingSave ? "SAVE LOADOUT" : "START MISSION"}
                 </button>
               </div>
             </div>
@@ -331,10 +331,30 @@ export default function Customize() {
       </div>
 
       {leaving ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#04050b] transition-opacity duration-500">
-          <div className="text-center">
-            <p className="pa-pixel text-[8px] text-[#4be3ff]">LOADING</p>
-            <p className="pa-pixel mt-4 text-[13px] text-white">STAGE 01 — RUSTLINE RIDGE</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#04050b] px-5 py-8">
+          <div className="pa-panel pa-fade-up w-full max-w-xl p-7 text-center sm:p-10">
+            <p className="pa-pixel text-[8px] tracking-[0.25em] text-[#7af6c8]">
+              {isExistingSave ? "LOADOUT UPDATED" : "MISSION INITIALIZED"}
+            </p>
+            <h2 className="pa-pixel mt-5 text-lg leading-relaxed text-white">
+              {isExistingSave ? "CONFIGURATION SAVED" : "STAGE 01 — RUSTLINE RIDGE"}
+            </h2>
+            {isExistingSave ? (
+              <>
+                <p className="mt-4 text-sm tracking-wide text-[#c6d2f2]/55">Your new weapon loadout is ready.</p>
+                <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                  <p className="pa-pixel border border-[#4be3ff]/35 bg-[#4be3ff]/[0.05] px-3 py-3 text-[7px] text-[#4be3ff]">
+                    PRIMARY · {WEAPON_TYPES[primary]?.name}
+                  </p>
+                  <p className="pa-pixel border border-[#ff3d8b]/35 bg-[#ff3d8b]/[0.05] px-3 py-3 text-[7px] text-[#ff3d8b]">
+                    SECONDARY · {WEAPON_TYPES[secondary]?.name}
+                  </p>
+                </div>
+                <p className="pa-pixel pa-blink mt-6 text-[7px] text-[#c6d2f2]/40">RETURNING TO WORLD MAP</p>
+              </>
+            ) : (
+              <p className="pa-pixel pa-blink mt-6 text-[7px] text-[#c6d2f2]/40">PREPARING STAGE</p>
+            )}
           </div>
         </div>
       ) : null}

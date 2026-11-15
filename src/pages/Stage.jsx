@@ -13,6 +13,13 @@ export default function Stage() {
   const [runId, setRunId] = useState(0);
   const [clear, setClear] = useState(null);
   const [wiped, setWiped] = useState(false);
+  const [briefing, setBriefing] = useState(true);
+
+  useEffect(() => {
+    if (!save || !isStageUnlocked(save, level.id)) return undefined;
+    const timer = setTimeout(() => setBriefing(false), 1800);
+    return () => clearTimeout(timer);
+  }, [level.id, save]);
 
   useEffect(() => {
     if (!save) navigate("/customize?new=1");
@@ -66,15 +73,40 @@ export default function Stage() {
 
   return (
     <div className="pa-root relative min-h-screen bg-[#05060d]">
-      <GameCanvas
-        key={runId}
-        level={level}
-        save={save}
-        onComplete={handleComplete}
-        onOutOfLives={() => setWiped(true)}
-        onRestart={() => setRunId((value) => value + 1)}
-        onQuit={() => navigate("/world")}
-      />
+      {!briefing ? (
+        <GameCanvas
+          key={runId}
+          level={level}
+          save={save}
+          onComplete={handleComplete}
+          onOutOfLives={() => setWiped(true)}
+          onRestart={() => setRunId((value) => value + 1)}
+          onQuit={() => navigate("/world")}
+        />
+      ) : (
+        <div className="fixed inset-0 z-30 flex items-center justify-center overflow-hidden bg-[#04050b] px-5">
+          <div className="pointer-events-none absolute inset-0 pa-scanlines opacity-50" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(75,227,255,0.12),transparent_65%)]" />
+          <section aria-label={`Entering ${level.name}`} className="pa-panel pa-fade-up relative w-full max-w-2xl p-6 text-center sm:p-10">
+            <p className="pa-pixel text-[8px] tracking-[0.3em] text-[#4be3ff]">MISSION BRIEFING</p>
+            <p className="pa-pixel mt-5 text-[9px] text-[#c6d2f2]/55">ENTERING STAGE {String(level.id).padStart(2, "0")}</p>
+            <h1 className="pa-pixel pa-title mt-4 text-xl leading-relaxed text-white sm:text-3xl">{level.name}</h1>
+            <div className="mx-auto mt-7 flex max-w-sm items-center justify-center gap-3 border-y border-[#2a2f52] py-4">
+              <span className="pa-pixel text-[8px] text-[#ffd166]">★</span>
+              <p className="pa-pixel text-[7px] leading-relaxed text-[#c6d2f2]/65">
+                FIND FIVE STARS · CLEAR WITHOUT LOSING A LIFE TO EARN THE SIXTH
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBriefing(false)}
+              className="pa-pixel mt-7 min-h-11 bg-[#4be3ff] px-6 py-3 text-[8px] text-[#05060d] hover:bg-[#8cf0ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166]"
+            >
+              BEGIN STAGE
+            </button>
+          </section>
+        </div>
+      )}
       {clear ? (
         <ClearOverlay
           level={level}

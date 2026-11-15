@@ -190,7 +190,7 @@ export function SaveSlotsPanel({ slots, activeSlot, mode, onSelect, onErase, onB
   );
 }
 
-export function SettingsPanel({ settings, onChange, onBack }) {
+export function SettingsPanel({ settings, onChange, onBack, onFullscreenToggle }) {
   const [listening, setListening] = useState(null);
   const [fullscreen, setFullscreen] = useState(() => Boolean(document.fullscreenElement));
   const [notice, setNotice] = useState("");
@@ -230,12 +230,55 @@ export function SettingsPanel({ settings, onChange, onBack }) {
 
   const toggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-      else throw new Error("Fullscreen is not supported by this browser.");
+      if (onFullscreenToggle) {
+        const changed = await onFullscreenToggle();
+        if (changed === false) throw new Error("Fullscreen could not be changed.");
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+        await window.screen?.orientation?.lock?.(settings.mobileOrientation || "landscape");
+      } else {
+        throw new Error("Fullscreen is not supported by this browser.");
+      }
       setNotice("");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Fullscreen could not be changed.");
+    }
+  };
+
+  const selectSetting = (label, options, selected, onSelect) => (
+    <div className="space-y-2">
+      <p className="pa-pixel text-[8px] text-[#c6d2f2]/80">{label}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={selected === option.value}
+            onClick={() => onSelect(option.value)}
+            className={`pa-pixel min-h-11 border px-3 py-2 text-[7px] transition-colors ${
+              selected === option.value
+                ? "border-[#4be3ff] bg-[#4be3ff]/10 text-[#4be3ff]"
+                : "border-[#2a2f52] text-[#c6d2f2]/50 hover:border-[#4be3ff]/60"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const selectOrientation = async (mobileOrientation) => {
+    onChange({ mobileOrientation });
+    if (onFullscreenToggle) return;
+    if (!document.fullscreenElement || !window.screen?.orientation?.lock) return;
+    try {
+      await window.screen.orientation.lock(mobileOrientation);
+      setNotice("");
+    } catch {
+      setNotice("Preference saved; this browser cannot lock the screen orientation.");
     }
   };
 
@@ -302,6 +345,27 @@ export function SettingsPanel({ settings, onChange, onBack }) {
         </div>
         {toggle("SCREEN SHAKE", settings.shake, () => onChange({ shake: !settings.shake }))}
         {toggle("TOUCH CONTROLS", settings.touchControls !== false, () => onChange({ touchControls: settings.touchControls === false } ), <Smartphone className="h-3 w-3" />)}
+        {selectSetting(
+          "TOUCH CONTROL STYLE",
+          [
+            { value: "joystick", label: "ANALOG STICK" },
+            { value: "dpad", label: "D-PAD" },
+          ],
+          settings.touchControlMode || "joystick",
+          (touchControlMode) => onChange({ touchControlMode })
+        )}
+        {selectSetting(
+          "MOBILE ORIENTATION",
+          [
+            { value: "landscape", label: "LANDSCAPE" },
+            { value: "portrait", label: "PORTRAIT" },
+          ],
+          settings.mobileOrientation || "landscape",
+          selectOrientation
+        )}
+        <p className="-mt-2 text-xs text-[#c6d2f2]/40">
+          Orientation locking is supported only by some mobile browsers and may require fullscreen.
+        </p>
         {toggle("HIGH CONTRAST", Boolean(settings.highContrast), () => onChange({ highContrast: !settings.highContrast }))}
         <div>
           {toggle("FULLSCREEN", fullscreen, toggleFullscreen, <Maximize className="h-3 w-3" />)}

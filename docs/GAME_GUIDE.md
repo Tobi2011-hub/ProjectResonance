@@ -61,9 +61,9 @@ The screens are four pages, each with the UI pieces it needs:
 ```
 src/pages/
   Title.jsx      title screen, new game / load / settings / exit
-  WorldMap.jsx   stage select, rifts, star counter (includes its map node)
-  Customize.jsx  character, colours and weapon loadout
-  Stage.jsx      loads a stage and hosts the canvas
+  WorldMap.jsx   stage select, rifts, star counter, and per-stage progress briefing
+  Customize.jsx  character, colours and weapon loadout with save confirmation
+  Stage.jsx      stage-entry briefing and the gameplay canvas
 
 src/components/
   game/GameUI.jsx             backdrop, canvas host, HUD, tutorial box, clear card

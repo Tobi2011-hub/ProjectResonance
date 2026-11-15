@@ -434,6 +434,50 @@ canvas.pa-canvas {
   display: block;
 }
 
+.pa-touch-only {
+  display: none;
+}
+
+@media (pointer: coarse), (hover: none) {
+  .pa-touch-only {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pa-desktop-only {
+    display: none !important;
+  }
+}
+
+@media (orientation: landscape) and (pointer: coarse), (orientation: landscape) and (hover: none) {
+  .pa-touch-fullscreen {
+    top: auto;
+    right: auto;
+    bottom: calc(env(safe-area-inset-bottom) + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+:fullscreen .pa-game-root {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0;
+  background: #05060d;
+}
+
+:fullscreen .pa-game-root .pa-game-shell {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  align-items: center;
+  justify-content: center;
+}
+
 .pa-high-contrast .pa-canvas {
   filter: contrast(1.3) saturate(1.15);
 }

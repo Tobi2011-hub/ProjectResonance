@@ -150,7 +150,7 @@ export default function GameHud({ hud, onReload }) {
         <span className="pa-pixel text-[5px]">{hud.reloadUsed ? "USED" : "R"}</span>
       </button>
 
-      <div className="absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[#05060d]/90 to-transparent px-3 pb-2 pt-5 sm:block">
+      <div className="pa-desktop-only absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[#05060d]/90 to-transparent px-3 pb-2 pt-5 sm:block">
         <div className="flex items-end justify-between gap-2">
           <div className="flex items-stretch gap-1.5">
             {hud.weapons.map((weapon, i) => {

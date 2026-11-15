@@ -496,8 +496,7 @@ export default class GameEngine {
   }
 
   /** Enemy kills top the current belt back up so long stages stay playable. */
-  refundAmmo(amount) {
-    const type = this.weapons[this.slot];
+  refundAmmo(amount, type = this.weapons[this.slot]) {
     const def = WEAPONS[type];
     if (!def?.maxAmmo) return;
     const max = Math.round(def.maxAmmo * (this.dual ? DUAL.ammo : 1));
@@ -579,8 +578,10 @@ export default class GameEngine {
         const dx = this.player.centerX - (bullet.x + bullet.w / 2);
         const dy = this.player.centerY - (bullet.y + bullet.h / 2);
         const distance = Math.hypot(dx, dy);
-        if (distance < 18) alive = false;
-        else {
+        if (alive && distance < 18) {
+          this.refundAmmo(1, bullet.weapon);
+          alive = false;
+        } else {
           bullet.vx = (dx / distance) * bullet.returnSpeed;
           bullet.vy = (dy / distance) * bullet.returnSpeed;
           bullet.x += bullet.vx * dt;
@@ -591,7 +592,11 @@ export default class GameEngine {
         bullet.y += (bullet.vy || 0) * dt;
         if (bullet.kind === "boomerang") {
           bullet.travelled += bullet.speed * dt;
-          if (bullet.travelled >= bullet.maxDistance) bullet.returning = true;
+          if (bullet.travelled >= bullet.maxDistance) {
+            bullet.returning = true;
+            bullet.hits.clear();
+            bullet.bossHit = false;
+          }
         }
       }
 
@@ -626,6 +631,8 @@ export default class GameEngine {
             bullet.vx = 0;
             bullet.vy = 0;
             bullet.returning = true;
+            bullet.hits.clear();
+            bullet.bossHit = false;
           } else {
             alive = false;
           }
@@ -650,7 +657,7 @@ export default class GameEngine {
       bullet.vy += 90 * dt;
       const rect = { x: bullet.x - 5, y: bullet.y - 5, w: 10, h: 10 };
       if (overlaps(rect, this.player) && this.player.invuln <= 0) {
-        this.player.hurt(bullet.damage ?? 4, bullet.x);
+        this.player.hurt(bullet.damage ?? 2, bullet.x);
         sfx("hit");
         return false;
       }
@@ -663,7 +670,7 @@ export default class GameEngine {
       wave.x += wave.dir * 215 * dt;
       const rect = { x: wave.x - 8, y: wave.y - wave.r, w: 16, h: wave.r };
       if (overlaps(rect, this.player) && this.player.invuln <= 0) {
-        this.player.hurt(4, wave.x);
+        this.player.hurt(Math.round(4 * 0.6), wave.x);
       }
       if (this.world.solidPx(wave.x, wave.y + 3)) return false;
       return wave.life > 0;
@@ -955,7 +962,7 @@ export default class GameEngine {
   // orbital rain: bolts fall from the ceiling around the player
   fireRain(boss, player) {
     const x = clamp(player.centerX + (Math.random() - 0.5) * 240, 8, this.level.width * TILE - 8);
-    this.enemyBullets.push({ kind: "enemy", x, y: 6, vx: 0, vy: 240, r: 5, life: 5 });
+    this.enemyBullets.push({ kind: "enemy", x, y: 6, vx: 0, vy: 240, r: 5, life: 5, damage: Math.round(4 * 0.6) });
     addFlash(this.effects, x, 10, 18, "#ff9f45");
   }
 
@@ -972,6 +979,7 @@ export default class GameEngine {
       vy: Math.sin(angle) * 265,
       r: 5,
       life: 4,
+      damage: Math.round(4 * 0.6),
     });
     addFlash(this.effects, originX, originY, 22, "#ff9f45");
     shake(this.effects, 2);
@@ -991,6 +999,7 @@ export default class GameEngine {
         vy: Math.sin(a) * 165,
         r: 6,
         life: 4,
+        damage: Math.round(4 * 0.6),
       });
     });
     addFlash(this.effects, originX, originY, 26, "#ff3d8b");

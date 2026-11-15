@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Gem, Lock, Play, ShieldAlert, ShoppingBag, Sparkles, Star } from "lucide-react";
+import { ArrowLeft, Check, Gem, Info, Lock, Play, ShieldAlert, ShoppingBag, Sparkles, Star, X } from "lucide-react";
 import { PixelBackdrop } from "@/components/game/GameUI";
 import PixelFontText from "@/components/game/PixelFontText";
 import { LEVELS } from "@/game/world";
@@ -20,7 +20,7 @@ import {
 } from "@/game/core";
 
 // One map node: icon (or padlock), star badge and the selected tooltip.
-function StageNode({ stage, name, x, y, unlocked, cleared, stars, selected, onSelect }) {
+function StageNode({ stage, name, x, y, unlocked, cleared, stars, selected, onSelect, onOpen }) {
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }}>
       {selected ? (
@@ -36,7 +36,7 @@ function StageNode({ stage, name, x, y, unlocked, cleared, stars, selected, onSe
         type="button"
         onMouseEnter={onSelect}
         onFocus={onSelect}
-        onClick={onSelect}
+        onClick={onOpen}
         aria-label={`Stage ${stage} ${unlocked ? "" : "(locked)"}`}
         className={`world-map__stage-node group relative grid h-11 w-11 touch-manipulation place-items-center border-2 transition-all duration-200 focus-visible:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd166] sm:h-16 sm:w-16 ${
           selected
@@ -85,6 +85,7 @@ export default function WorldMap() {
   const [save, setSave] = useState(() => loadSave());
   const [selected, setSelected] = useState(() => (save ? Math.min(save.highestStage, 10) : 1));
   const [notice, setNotice] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (!save) navigate("/customize?new=1");
@@ -99,6 +100,7 @@ export default function WorldMap() {
   const level = LEVELS[selected - 1];
   const unlocked = isStageUnlocked(save, selected);
   const cleared = Boolean(save?.cleared?.includes(selected));
+  const selectedStars = save?.stars?.[selected] || [];
 
   const deploy = (stage = selected) => {
     if (!isStageUnlocked(save, stage)) {
@@ -119,6 +121,12 @@ export default function WorldMap() {
 
   useEffect(() => {
     const onKey = (event) => {
+      if (detailsOpen && event.key === "Escape") {
+        event.preventDefault();
+        setDetailsOpen(false);
+        return;
+      }
+      if (detailsOpen) return;
       if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " "].includes(event.key)) return;
       event.preventDefault();
       if (event.key === "ArrowRight" || event.key === "ArrowDown") {
@@ -128,12 +136,12 @@ export default function WorldMap() {
         sfx("move");
         setSelected((s) => Math.max(1, s - 1));
       } else {
-        deploy(selected);
+        setDetailsOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [detailsOpen, selected, save]);
 
   const pathPoints = useMemo(() => POSITIONS.map((p) => `${p.x},${p.y}`).join(" "), []);
   const secrets = SECRET_STAGES.map((id) => LEVELS[id - 1]);
@@ -183,7 +191,7 @@ export default function WorldMap() {
               <PixelFontText text="WORLD MAP" className="mt-2 text-[18px] text-white sm:text-[22px]" spacing={0.04} />
             </div>
             <p className="pa-pixel hidden shrink-0 whitespace-nowrap text-[7px] text-[#c6d2f2]/40 sm:block">
-              ← → SELECT NODE · ENTER TO DEPLOY
+              ← → SELECT NODE · ENTER FOR DETAILS
             </p>
           </div>
           <div className="relative min-h-0 w-full">
@@ -213,6 +221,11 @@ export default function WorldMap() {
                 onSelect={() => {
                   setSelected(stageLevel.id);
                   sfx("move");
+                }}
+                onOpen={() => {
+                  setSelected(stageLevel.id);
+                  setDetailsOpen(true);
+                  sfx("select");
                 }}
               />
             ))}
@@ -248,13 +261,11 @@ export default function WorldMap() {
               </button>
               <button
                 type="button"
-                onClick={() => deploy()}
-                className={`pa-pixel flex min-h-[44px] touch-manipulation items-center justify-center gap-2 px-4 py-2 text-[10px] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166] sm:px-5 sm:py-3 ${
-                  unlocked ? "bg-[#4be3ff] text-[#05060d] hover:scale-[1.02]" : "cursor-not-allowed bg-[#1b2140] text-[#c6d2f2]/30"
-                }`}
+                onClick={() => setDetailsOpen(true)}
+                className="pa-pixel flex min-h-[44px] touch-manipulation items-center justify-center gap-2 bg-[#4be3ff] px-4 py-2 text-[10px] text-[#05060d] transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166] sm:px-5 sm:py-3"
               >
-                {unlocked ? <Play className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-                {unlocked ? "DEPLOY" : "LOCKED"}
+                <Info className="h-3 w-3" />
+                DETAILS
               </button>
             </div>
           </div>
@@ -276,7 +287,11 @@ export default function WorldMap() {
                   <button
                     key={secret.id}
                     type="button"
-                    onClick={() => deploy(secret.id)}
+                    onClick={() => {
+                      setSelected(secret.id);
+                      setDetailsOpen(true);
+                      sfx("select");
+                    }}
                     className={`group min-h-[48px] min-w-[132px] shrink-0 snap-start touch-manipulation border p-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166] sm:min-w-0 sm:shrink sm:p-3 ${
                       open
                         ? "border-[#7af6c8]/50 bg-[#7af6c8]/8 hover:border-[#7af6c8]"
@@ -312,10 +327,104 @@ export default function WorldMap() {
         </main>
 
         <footer className="hidden shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-2 sm:flex">
-          <p className="pa-pixel text-[7px] text-[#c6d2f2]/25">← → SELECT NODE · ENTER DEPLOY</p>
+          <p className="pa-pixel text-[7px] text-[#c6d2f2]/25">← → SELECT NODE · ENTER DETAILS</p>
           <p className="pa-pixel text-[7px] text-[#c6d2f2]/20">3 LIVES PER STAGE · DEATHLESS CLEAR EARNS THE SIXTH STAR</p>
         </footer>
       </div>
+      {detailsOpen ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-[#03040a]/90 px-4 py-8">
+          <section
+            aria-label={`Stage ${selected} details`}
+            aria-modal="true"
+            className="pa-panel pa-fade-up relative w-full max-w-xl overflow-hidden p-5 sm:p-8"
+            role="dialog"
+          >
+            <div className="pointer-events-none absolute inset-0 pa-scanlines opacity-40" />
+            <div className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="pa-pixel text-[8px] tracking-[0.2em] text-[#4be3ff]">STAGE {String(selected).padStart(2, "0")}</p>
+                  <h2 className="pa-pixel mt-3 text-[15px] leading-relaxed text-white sm:text-lg">{level.name}</h2>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close stage details"
+                  onClick={() => setDetailsOpen(false)}
+                  className="grid h-10 w-10 shrink-0 place-items-center border border-[#2a2f52] text-[#c6d2f2]/60 hover:border-[#4be3ff] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="border border-[#2a2f52] bg-[#070a18]/80 p-4">
+                  <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">STAR COLLECTIBLES</p>
+                  <p className="pa-pixel mt-3 flex items-center gap-2 text-[10px] text-[#ffd166]">
+                    <Star className="h-4 w-4 fill-[#ffd166]" />
+                    {selectedStars.slice(0, 5).filter(Boolean).length} / 5 FOUND
+                  </p>
+                  <div className="mt-3 flex gap-2" aria-label={`${selectedStars.slice(0, 5).filter(Boolean).length} of 5 collectible stars found`}>
+                    {Array.from({ length: 5 }, (_, index) => (
+                      <Star
+                        key={index}
+                        className={`h-5 w-5 ${selectedStars[index] ? "fill-[#ffd166] text-[#ffd166]" : "text-[#2a2f52]"}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="border border-[#2a2f52] bg-[#070a18]/80 p-4">
+                  <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">DEATHLESS CLEAR</p>
+                  <p className={`pa-pixel mt-3 flex items-center gap-2 text-[9px] ${selectedStars[5] ? "text-[#7af6c8]" : "text-[#c6d2f2]/45"}`}>
+                    {selectedStars[5] ? <Check className="h-4 w-4" /> : <Star className="h-4 w-4" />}
+                    {selectedStars[5] ? "SIXTH STAR SECURED" : "CLEAR WITHOUT LOSING A LIFE"}
+                  </p>
+                  <p className="mt-3 text-xs tracking-wide text-[#c6d2f2]/45">
+                    {cleared ? "Stage cleared" : "Not cleared yet"}
+                  </p>
+                </div>
+              </div>
+
+              {level.challenge ? (
+                <p className="pa-pixel mt-4 border border-[#ffd166]/25 bg-[#ffd166]/[0.04] p-3 text-[7px] leading-relaxed text-[#ffd166]">
+                  COIN CHALLENGE · COLLECT EVERY COIN IN ONE RUN TO UNLOCK {WEAPON_TYPES[CHALLENGE_WEAPONS[selected]]?.name?.toUpperCase()}
+                </p>
+              ) : null}
+              {!unlocked ? (
+                <p className="pa-pixel mt-4 text-[7px] leading-relaxed text-[#ff3d8b]">
+                  {level.starOf
+                    ? `LOCKED · FIND ALL SIX STARS ON STAGE ${level.starOf}`
+                    : level.secretOf
+                    ? `LOCKED · GET FIVE STARS ON STAGE ${level.secretOf} IN ONE RUN`
+                    : `LOCKED · CLEAR STAGE ${String(selected - 1).padStart(2, "0")} FIRST`}
+                </p>
+              ) : null}
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDetailsOpen(false)}
+                  className="pa-pixel min-h-11 border border-[#2a2f52] px-5 py-3 text-[8px] text-[#c6d2f2]/60 hover:text-white"
+                >
+                  BACK TO MAP
+                </button>
+                <button
+                  type="button"
+                  disabled={!unlocked}
+                  onClick={() => {
+                    setDetailsOpen(false);
+                    deploy(selected);
+                  }}
+                  className={`pa-pixel flex min-h-11 items-center justify-center gap-2 px-5 py-3 text-[8px] ${
+                    unlocked ? "bg-[#4be3ff] text-[#05060d]" : "cursor-not-allowed bg-[#1b2140] text-[#c6d2f2]/30"
+                  }`}
+                >
+                  {unlocked ? <Play className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
+                  {unlocked ? "DEPLOY" : "LOCKED"}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
