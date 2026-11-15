@@ -49,6 +49,39 @@ import {
 } from "./core";
 import { WEAPONS } from "./weapons";
 
+export const ENEMY_VARIANTS = {
+  standard: {
+    name: "Patroller",
+    body: "#59616b",
+    accent: "#c5b49b",
+    description: "A standard patrol bot. Defeat it to recover a little ammo.",
+  },
+  shielded: {
+    name: "Phase Guard",
+    body: "#704624",
+    accent: "#e9a85d",
+    description: "Cycles between vulnerable and invincible phases. Wait for its shield to fade.",
+  },
+  flyer: {
+    name: "Drifter",
+    body: "#465263",
+    accent: "#c4b99e",
+    description: "Hovers above the ground and patrols the upper route.",
+  },
+  armored: {
+    name: "Bulwark",
+    body: "#713d32",
+    accent: "#d99b69",
+    description: "Has twice the standard health and deals 1.7x contact damage.",
+  },
+  gunner: {
+    name: "Marksman",
+    body: "#596044",
+    accent: "#c2b77b",
+    description: "Fires aimed energy bolts when you come within range.",
+  },
+};
+
 // ---------------------------------------------------------------------------
 //  1. WEAPONS
 //  COOLDOWN = seconds between shots (lower = faster).
@@ -221,13 +254,14 @@ export function drawBullet(ctx, bullet, camX, camY) {
     ctx.fillRect(x + 3, y + 3, 6, 6);
   } else if (bullet.kind === "enemy") {
     const r = bullet.r || 5;
+    const color = bullet.color || "#ff5aa6";
     const gradient = ctx.createRadialGradient(x, y, 0, x, y, r * 2);
     gradient.addColorStop(0, "#ffffff");
-    gradient.addColorStop(0.5, "#ff5aa6");
-    gradient.addColorStop(1, "rgba(255,61,139,0)");
+    gradient.addColorStop(0.5, color);
+    gradient.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = gradient;
     ctx.fillRect(x - r * 2, y - r * 2, r * 4, r * 4);
-    ctx.fillStyle = "#ffd7e8";
+    ctx.fillStyle = color;
     ctx.fillRect(x - r / 2, y - r / 2, r, r);
   } else {
     const w = bullet.w;
@@ -625,19 +659,28 @@ export class Player {
 // ---------------------------------------------------------------------------
 
 export class Enemy {
-  constructor(tx, groundRow, minX, maxX) {
+  constructor(tx, groundRow, minX, maxX, variant = "standard") {
+    this.variant = ENEMY_VARIANTS[variant] ? variant : "standard";
+    this.variantStyle = ENEMY_VARIANTS[this.variant];
     this.w = 22;
     this.h = 24;
     this.x = tx * TILE;
     this.y = groundRow * TILE - this.h;
+    this.baseY = this.y;
     this.minX = minX * TILE;
     this.maxX = maxX * TILE;
     this.vx = 0;
     this.vy = 0;
     this.dir = Math.random() > 0.5 ? 1 : -1;
     this.speed = 42;
-    this.hp = 70;
-    this.maxHp = 70;
+    this.maxHp = this.variant === "armored" ? 140 : 70;
+    this.hp = this.maxHp;
+    this.flyer = this.variant === "flyer";
+    if (this.flyer) this.baseY -= TILE * 4;
+    this.flyPhase = Math.random() * Math.PI * 2;
+    this.phaseTime = Math.random() * 3.4;
+    this.invulnerable = false;
+    this.shotCooldown = 1.4 + Math.random() * 1.2;
     this.flash = 0;
     this.hitStun = 0;
     this.hitDir = 0;
@@ -662,12 +705,14 @@ export class Enemy {
       return;
     }
 
-    this.vy = Math.min(500, this.vy + GRAVITY * dt);
-
     const aheadX = this.dir > 0 ? this.x + this.w + 3 : this.x - 3;
-    const floorAhead = world.solidPx(aheadX, this.y + this.h + 5);
     const wallAhead = world.solidPx(aheadX, this.y + this.h / 2);
-    if ((!floorAhead && this.onGround) || wallAhead) this.dir *= -1;
+    if (this.flyer) {
+      if (wallAhead) this.dir *= -1;
+    } else {
+      const floorAhead = world.solidPx(aheadX, this.y + this.h + 5);
+      if ((!floorAhead && this.onGround) || wallAhead) this.dir *= -1;
+    }
 
     if (this.x < this.minX) this.dir = 1;
     if (this.x + this.w > this.maxX) this.dir = -1;
@@ -675,20 +720,56 @@ export class Enemy {
     if (this.hitStun > 0) this.hitStun = Math.max(0, this.hitStun - dt);
     this.vx = this.hitStun > 0 ? this.hitDir * 190 : this.dir * this.speed;
     if (moveActorX(this, this.vx * dt, world)) this.dir *= -1;
-    this.onGround = false;
-    if (moveActorY(this, this.vy * dt, world) === "ground") {
-      this.vy = 0;
-      this.onGround = true;
+    if (this.flyer) {
+      this.y = this.baseY + Math.sin(this.animTime * 2 + this.flyPhase) * 18;
+      this.onGround = false;
+    } else {
+      this.vy = Math.min(500, this.vy + GRAVITY * dt);
+      this.onGround = false;
+      if (moveActorY(this, this.vy * dt, world) === "ground") {
+        this.vy = 0;
+        this.onGround = true;
+      }
+    }
+
+    if (this.variant === "shielded") {
+      this.phaseTime = (this.phaseTime + dt) % 3.4;
+      this.invulnerable = this.phaseTime < 1.4;
+    }
+
+    let shot = null;
+    if (this.variant === "gunner" && player && !player.dead) {
+      this.shotCooldown -= dt;
+      const dx = player.centerX - (this.x + this.w / 2);
+      const dy = player.centerY - (this.y + this.h / 2);
+      if (this.shotCooldown <= 0 && Math.hypot(dx, dy) < 360) {
+        const angle = Math.atan2(dy, dx);
+        shot = {
+          kind: "enemy",
+          x: this.x + this.w / 2,
+          y: this.y + this.h / 2,
+          vx: Math.cos(angle) * 205,
+          vy: Math.sin(angle) * 205,
+          r: 5,
+          life: 3,
+          damage: 4,
+          color: this.variantStyle.accent,
+        };
+        this.shotCooldown = 2.2;
+      }
     }
 
     if (player && !player.dead && overlaps(this, player) && player.invuln <= 0) {
-      const dealt = player.hurt(ENEMY_DAMAGE, this.x + this.w / 2);
+      const damage = this.variant === "armored" ? Math.round(ENEMY_DAMAGE * 1.7) : ENEMY_DAMAGE;
+      const dealt = player.hurt(damage, this.x + this.w / 2);
       if (dealt) sfx("hit");
     }
+    return shot;
   }
 
   damage(amount, fromX) {
     if (this.dying) return false;
+    if (this.invulnerable) return false;
     this.hp -= amount;
     this.flash = 0.28;
     this.hitStun = 0.12;

@@ -48,7 +48,7 @@ Only four files make up the game itself:
 src/game/
   core.js        ★ ALL the tuning numbers + physics + input + sound + effects
                  + the save file. Sections are numbered 1–6 in the file.
-  entities.js    weapons, the player, the walking enemy, the Void Core boss
+  entities.js    weapons, the player, enemy variants, the Void Core boss
                  (sections 1–4)
   world.js       image assets, sprite drawing, the stage generator and all
                  canvas rendering (sections 1–4)
@@ -118,6 +118,12 @@ section 3 (INPUT). Players can still rebind everything in Settings.
 
 **Change a weapon.** `COOLDOWN` and the numbers inside `fireWeapon()` in
 `entities.js`, section 1 (WEAPONS).
+
+**Change an enemy variant.** `ENEMY_VARIANTS` and the `Enemy` class in
+`entities.js` define enemy colours and abilities. `buildStage()` in `world.js`
+assigns variants to generated patrols; `drawEnemies()` tints their shared
+sprites. The Settings screen's **Field Manual** describes the controls,
+collectibles and enemy abilities for players.
 
 ## 6. Things to be careful with
 

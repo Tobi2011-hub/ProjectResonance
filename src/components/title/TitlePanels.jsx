@@ -15,6 +15,8 @@ import {
   stageStars,
   totalStars,
 } from "@/game/core";
+import { FRUIT_POWERUPS } from "@/game/collectibles";
+import { ENEMY_VARIANTS } from "@/game/entities";
 
 export function PanelFrame({ title, tag, children, onBack }) {
   return (
@@ -343,6 +345,81 @@ export function SettingsPanel({ settings, onChange, onBack }) {
             Click a row, then press the key you want. Escape cancels. Pause stays on ESC / P and messages on Enter.
           </p>
         </div>
+
+        <details className="border border-[#2a2f52] bg-black/20">
+          <summary className="pa-pixel cursor-pointer px-4 py-3 text-[8px] text-[#4be3ff]">
+            FIELD MANUAL — CONTROLS, ITEMS & ENEMIES
+          </summary>
+          <div className="space-y-5 border-t border-[#2a2f52] px-4 py-4">
+            <section>
+              <h3 className="pa-pixel text-[8px] text-white">CONTROLS</h3>
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
+                {CONTROL_ROWS.map((control) => (
+                  <div key={control.key} className="flex items-center justify-between gap-2">
+                    <dt className="text-[#c6d2f2]/55">{control.label}</dt>
+                    <dd className="pa-pixel text-[7px] text-[#4be3ff]">{keyLabel(controls[control.key])}</dd>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-[#c6d2f2]/55">PAUSE</dt>
+                  <dd className="pa-pixel text-[7px] text-[#4be3ff]">ESC / P</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-[11px] leading-relaxed text-[#c6d2f2]/45">
+                Jump height depends on how long you hold jump. Dash works in the air; wall-jump by pressing jump against a wall.
+                Reload normally refills ammo and heals once per stage; Star Magnet changes this to an ammo-for-healing trade.
+                On touch devices, use the on-screen controls.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="pa-pixel text-[8px] text-white">COLLECTIBLES & STAGE OBJECTS</h3>
+              <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-[#c6d2f2]/50">
+                <li><span className="text-[#ffd166]">Stars:</span> Find five in a stage; collecting all five in one run unlocks its rift. A no-death clear earns a sixth star.</li>
+                <li><span className="text-[#ffd166]">Coins:</span> Take every coin in challenge stages 1, 3, and 5 to earn a weapon.</li>
+                <li><span className="text-[#4be3ff]">Ammo crates:</span> Refill your weapon reserves. Defeating enemies also restores a little ammo.</li>
+                <li>
+                  <span className="text-[#7af6c8]">Fruit power-ups:</span> Each pickup is random. The eight types are:
+                  <div className="mt-1 grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
+                    {FRUIT_POWERUPS.map((fruit) => (
+                      <p key={fruit.id} className="flex items-start gap-1.5">
+                        <span className="mt-1 h-2 w-2 shrink-0" style={{ backgroundColor: fruit.color }} aria-hidden="true" />
+                        <span><span className="text-[#e8eefc]/80">{fruit.name}:</span> {fruit.description}</span>
+                      </p>
+                    ))}
+                  </div>
+                </li>
+                <li><span className="text-white">Checkpoints:</span> Save your respawn point. Reach the exit to clear the stage; defeat the boss first when a door is sealed.</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="pa-pixel text-[8px] text-white">ENEMY TYPES</h3>
+              <div className="mt-2 space-y-2">
+                {Object.entries(ENEMY_VARIANTS).map(([id, enemy]) => (
+                  <div key={id} className="flex gap-2 text-[11px] leading-relaxed">
+                    <span
+                      className="mt-1 h-2.5 w-2.5 shrink-0 border border-white/30"
+                      style={{ backgroundColor: enemy.accent }}
+                      aria-hidden="true"
+                    />
+                    <p className="text-[#c6d2f2]/50">
+                      <span className="text-white">{enemy.name}:</span> {enemy.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="pa-pixel text-[8px] text-white">SURVIVAL</h3>
+              <p className="mt-2 text-[11px] leading-relaxed text-[#c6d2f2]/45">
+                Watch for spikes and saws, and time your crossing of moving platforms. You have three lives per stage.
+                Swap between your two equipped weapons to match the enemy or distance; pause with ESC or P to adjust settings or restart.
+              </p>
+            </section>
+          </div>
+        </details>
       </div>
     </PanelFrame>
   );

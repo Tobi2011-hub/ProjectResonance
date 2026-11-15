@@ -200,12 +200,13 @@ export function drawChar(ctx, assets, prefix, animKey, time, dx, dy, dw, dh, fli
   drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
 }
 
-export function drawEnemyAnim(ctx, assets, animKey, time, dx, dy, dw, dh, flip = false) {
+export function drawEnemyAnim(ctx, assets, animKey, time, dx, dy, dw, dh, flip = false, tint = null) {
   const anim = ENEMY_ANIMS[animKey] || ENEMY_ANIMS.idle;
   const img = assets[`enemy_${animKey}`];
   if (!img) return;
   const frame = Math.floor(time * anim.fps) % anim.frames;
-  drawFrame(ctx, img, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
+  const source = tint ? tintSprite(img, tint.body, tint.accent, `enemy_${animKey}`) : img;
+  drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
 }
 
 // ---------------------------------------------------------------------------
@@ -330,7 +331,9 @@ function buildStage(cfg) {
     const count = Math.max(1, Math.floor(span.len / 18));
     for (let k = 0; k < count; k += 1) {
       const ex = span.x + 2 + Math.floor(((span.len - 3) * (k + 0.5)) / count);
-      enemies.push({ x: ex, y: span.top, minX: span.x + 1, maxX: span.end - 1 });
+      const variants = ["standard", "shielded", "flyer", "armored", "gunner"];
+      const variant = variants[(enemies.length + cfg.id) % variants.length];
+      enemies.push({ x: ex, y: span.top, minX: span.x + 1, maxX: span.end - 1, variant });
     }
   });
 
@@ -1149,9 +1152,17 @@ export function drawEnemies(ctx, engine) {
     if (enemy.flash > 0) ctx.globalAlpha = 0.75;
     if (enemy.dying) {
       ctx.globalAlpha = Math.max(0, 1 - enemy.deathTimer / 0.7);
-      drawEnemyAnim(ctx, assets, "death", enemy.deathTimer, dx - 5, dy - 12, size + 10, size + 14, enemy.dir < 0);
+      drawEnemyAnim(ctx, assets, "death", enemy.deathTimer, dx - 5, dy - 12, size + 10, size + 14, enemy.dir < 0, enemy.variantStyle);
     } else {
-      drawEnemyAnim(ctx, assets, enemy.onGround ? "run" : "jump", enemy.animTime, dx, dy, size, size, enemy.dir < 0);
+      drawEnemyAnim(ctx, assets, enemy.onGround ? "run" : "jump", enemy.animTime, dx, dy, size, size, enemy.dir < 0, enemy.variantStyle);
+    }
+    if (enemy.invulnerable) {
+      ctx.globalAlpha = 0.78 + Math.sin(enemy.animTime * 12) * 0.18;
+      ctx.strokeStyle = enemy.variantStyle.accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(dx + size / 2, dy + size / 2, size * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
     }
     if (enemy.flash > 0) {
       ctx.globalCompositeOperation = "lighter";
@@ -1171,7 +1182,9 @@ export function drawEnemies(ctx, engine) {
       ctx.fillRect(bx - 1, by - 1, bw + 2, 5);
       ctx.fillStyle = "#242a48";
       ctx.fillRect(bx, by, bw, 3);
-      ctx.fillStyle = pct > 0.5 ? "#7af6c8" : pct > 0.25 ? "#ffd166" : "#ff3d8b";
+      ctx.fillStyle = enemy.variant === "standard"
+        ? pct > 0.5 ? "#7af6c8" : pct > 0.25 ? "#ffd166" : "#ff3d8b"
+        : enemy.variantStyle.accent;
       ctx.fillRect(bx, by, Math.max(1, Math.round(bw * pct)), 3);
     }
   });

@@ -4,14 +4,14 @@
  */
 
 export const FRUIT_POWERUPS = [
-  { id: "apple", name: "Apple", color: "#ff5a6e", accent: "#7a0f25", effect: "heal", value: 40, description: "Small heal" },
-  { id: "banana", name: "Banana", color: "#ffd166", accent: "#b7791f", effect: "speed", value: 8, description: "Speed boost" },
-  { id: "cherry", name: "Cherry", color: "#ff3d8b", accent: "#7a0f3d", effect: "damage", value: 10, description: "Damage boost" },
-  { id: "kiwi", name: "Kiwi", color: "#7af6c8", accent: "#207a52", effect: "shield", value: 10, description: "Shield" },
-  { id: "melon", name: "Melon", color: "#5ae17d", accent: "#1b7a39", effect: "full-heal", value: 100, description: "Full heal" },
-  { id: "orange", name: "Orange", color: "#ff9f43", accent: "#b75b00", effect: "fire-rate", value: 8, description: "Rapid fire" },
-  { id: "pineapple", name: "Pineapple", color: "#ffd166", accent: "#d97706", effect: "invuln", value: 3.5, description: "Invincibility" },
-  { id: "strawberry", name: "Strawberry", color: "#ff5d8f", accent: "#7a1232", effect: "regen", value: 7, description: "Regen" },
+  { id: "apple", name: "Apple", color: "#ff5a6e", accent: "#7a0f25", effect: "heal", value: 40, description: "Restores 40 health." },
+  { id: "banana", name: "Banana", color: "#ffd166", accent: "#b7791f", effect: "speed", value: 8, description: "Increases movement speed by 40% for 8 seconds." },
+  { id: "cherry", name: "Cherry", color: "#ff3d8b", accent: "#7a0f3d", effect: "damage", value: 10, description: "Increases weapon damage by 45% for 10 seconds." },
+  { id: "kiwi", name: "Kiwi", color: "#7af6c8", accent: "#207a52", effect: "shield", value: 10, description: "Reduces incoming hits by 24 damage for 10 seconds." },
+  { id: "melon", name: "Melon", color: "#5ae17d", accent: "#1b7a39", effect: "full-heal", value: 100, description: "Restores health to maximum." },
+  { id: "orange", name: "Orange", color: "#ff9f43", accent: "#b75b00", effect: "fire-rate", value: 8, description: "Increases firing rate by 30% for 9 seconds." },
+  { id: "pineapple", name: "Pineapple", color: "#ffd166", accent: "#d97706", effect: "invuln", value: 3.5, description: "Restores 20 health and grants 3.5 seconds of invulnerability." },
+  { id: "strawberry", name: "Strawberry", color: "#ff5d8f", accent: "#7a1232", effect: "regen", value: 7, description: "Regenerates 9 health per second for 7 seconds." },
 ];
 
 export function randomFruitPowerup() {

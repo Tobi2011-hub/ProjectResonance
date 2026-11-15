@@ -187,7 +187,9 @@ export default class GameEngine {
     }));
     this.rideIndex = null;
 
-    this.enemies = (level.enemies || []).map((enemy) => new Enemy(enemy.x, enemy.y, enemy.minX, enemy.maxX));
+    this.enemies = (level.enemies || []).map(
+      (enemy) => new Enemy(enemy.x, enemy.y, enemy.minX, enemy.maxX, enemy.variant)
+    );
     this.boss = level.boss ? new Boss(level.boss.x, level.boss.y, { minX: level.door.x, maxX: level.width }) : null;
     this.bossTriggered = false;
     this.bossDefeated = false;
@@ -515,7 +517,8 @@ export default class GameEngine {
     const reach = VIEW_W * 1.2;
     this.enemies.forEach((enemy) => {
       if (!enemy.dying && Math.abs(enemy.x - this.player.centerX) > reach) return;
-      enemy.update(dt, this.world, this.player);
+      const shot = enemy.update(dt, this.world, this.player);
+      if (shot) this.enemyBullets.push(shot);
     });
     this.enemies = this.enemies.filter((enemy) => !enemy.remove);
   }
@@ -606,7 +609,7 @@ export default class GameEngine {
       bullet.vy += 90 * dt;
       const rect = { x: bullet.x - 5, y: bullet.y - 5, w: 10, h: 10 };
       if (overlaps(rect, this.player) && this.player.invuln <= 0) {
-        this.player.hurt(4, bullet.x);
+        this.player.hurt(bullet.damage ?? 4, bullet.x);
         sfx("hit");
         return false;
       }
