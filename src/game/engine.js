@@ -194,7 +194,10 @@ export default class GameEngine {
     this.enemies = (level.enemies || []).map(
       (enemy) => new Enemy(enemy.x, enemy.y, enemy.minX, enemy.maxX, enemy.variant)
     );
-    this.boss = level.boss ? new Boss(level.boss.x, level.boss.y, { minX: level.door.x, maxX: level.width }) : null;
+    this.boss = level.boss ? this.createBoss() : null;
+    this.bossWorld = level.boss?.collisionPlatforms
+      ? createWorld({ ...level, platforms: level.boss.collisionPlatforms })
+      : this.world;
     this.bossTriggered = false;
     this.bossDefeated = false;
     this.bossShieldAdds = [];
@@ -235,14 +238,21 @@ export default class GameEngine {
   }
 
   getSpawnPoint() {
-    if (this.level.boss && this.bossTriggered && !this.bossDefeated) {
-      return [this.level.door.x + 2, 15];
-    }
     if (this.checkpointIndex > 0) {
       const cp = this.checkpoints[this.checkpointIndex - 1];
       if (cp) return [cp.x / TILE, cp.y / TILE];
     }
+    if (this.level.boss && this.bossTriggered && !this.bossDefeated) {
+      return [this.level.boss.arenaMinX + 1, this.level.boss.y];
+    }
     return this.level.spawn;
+  }
+
+  createBoss() {
+    return new Boss(this.level.boss.x, this.level.boss.y, {
+      minX: this.level.boss.minX ?? this.level.door?.x ?? 0,
+      maxX: this.level.boss.maxX ?? this.level.width,
+    });
   }
 
   start() {
@@ -399,6 +409,16 @@ export default class GameEngine {
       mover.dy = mover.y - prevY;
       this.world.addDynamic({ x: mover.x, y: mover.y, w: mover.w, h: mover.h });
     });
+
+    if (this.bossTriggered && !this.bossDefeated) {
+      const { dropMinX, dropMaxX, dropCeilingY } = this.level.boss;
+      this.world.addDynamic({
+        x: dropMinX * TILE,
+        y: dropCeilingY * TILE,
+        w: (dropMaxX - dropMinX + 1) * TILE,
+        h: 8,
+      });
+    }
 
     if (this.rideIndex !== null && this.movers[this.rideIndex]) {
       const mover = this.movers[this.rideIndex];
@@ -952,6 +972,7 @@ export default class GameEngine {
       this.hooks.onOutOfLives({ stage: this.level.id });
       return;
     }
+    if (this.bossTriggered && !this.bossDefeated) this.resetBossEncounter();
     this.respawning = true;
     this.respawnTimer = 0.6;
     this.player.vx = 0;
@@ -972,6 +993,25 @@ export default class GameEngine {
     sfx("door");
     shake(this.effects, 7);
     this.pushHud(true);
+  }
+
+  resetBossEncounter() {
+    this.boss = this.createBoss();
+    this.bossTriggered = false;
+    this.bossDefeated = false;
+    this.phaseAlertTimer = 0;
+    this.bossPlatforms = [];
+    this.movers = this.movers.filter((mover) => !mover.bossHazard);
+    this.enemies = this.enemies.filter((enemy) => !this.bossShieldAdds.includes(enemy));
+    this.bossShieldAdds = [];
+    this.world.openDoor();
+    this.doorProgress = 0;
+    this.camera.locked = false;
+    this.bullets = [];
+    this.blades = [];
+    this.explosions = [];
+    this.enemyBullets = [];
+    this.shockwaves = [];
   }
 
   onBossDefeated() {
@@ -997,7 +1037,7 @@ export default class GameEngine {
   bossPhaseTwo(boss) {
     this.phaseAlertTimer = 2.4;
     this.spawnBossPlatforms();
-    sfx("door");
+    sfx("clear");
     shake(this.effects, 14);
     this.hitstop = Math.max(this.hitstop, 0.18);
     addFlash(this.effects, boss.x + boss.w / 2, boss.y + boss.h / 2, 92, "#ff9f45");
@@ -1012,17 +1052,16 @@ export default class GameEngine {
 
   spawnBossPlatforms() {
     if (this.bossPlatforms.length) return;
-    const platformHeight = this.boss.h / 2;
     this.bossPlatforms = [
-      { x: 17, y: 8, axis: "x", range: 2.5, speed: 0.85, phase: 0, spikeTimer: 1.2 },
-      { x: 35, y: 8, axis: "y", range: 2, speed: 1.05, phase: Math.PI / 2, spikeTimer: 2.4 },
+      { x: 20, y: 12, axis: "x", range: 2, speed: 0.8, phase: 0, spikeTimer: 1.2 },
+      { x: 31, y: 8, axis: "y", range: 1, speed: 1, phase: Math.PI / 2, spikeTimer: 2.4 },
     ].map((config) => ({
       baseX: config.x * TILE,
       baseY: config.y * TILE,
       x: config.x * TILE,
       y: config.y * TILE,
-      w: this.boss.w,
-      h: platformHeight,
+      w: TILE * 3,
+      h: 10,
       axis: config.axis,
       range: config.range * TILE,
       speed: config.speed,
@@ -1038,8 +1077,8 @@ export default class GameEngine {
 
   activateBossShield() {
     if (!this.boss) return;
-    const minX = this.level.door.x + 1;
-    const maxX = this.level.width - 1;
+    const minX = this.level.boss.arenaMinX + 1;
+    const maxX = this.level.boss.arenaMaxX;
     const left = clamp(Math.floor(this.boss.x / TILE) - 3, minX, maxX - 2);
     const right = clamp(Math.floor((this.boss.x + this.boss.w) / TILE) + 2, minX, maxX - 2);
     this.bossShieldAdds = [left, right].map((tx) =>
@@ -1122,7 +1161,7 @@ export default class GameEngine {
     if (this.finished) return;
     this.finished = true;
     const noDeath = this.deaths === 0;
-    if (noDeath) this.stars[5] = true;
+    if (noDeath && this.level.id !== 10) this.stars[5] = true;
     sfx("clear");
     burst(this.effects, this.player.centerX, this.player.centerY, { count: 30, color: "#ffd166", speed: 180, life: 0.8 });
     this.hooks.onComplete({
@@ -1240,8 +1279,10 @@ export default class GameEngine {
   applyBounds() {
     const player = this.player;
     const sealed = this.level.boss && this.bossTriggered && !this.bossDefeated;
-    const left = sealed ? (this.level.door.x + 1) * TILE : TILE;
-    const right = this.level.width * TILE - player.w - TILE;
+    const left = sealed ? (this.level.boss.arenaMinX + 1) * TILE : TILE;
+    const right = sealed
+      ? this.level.boss.arenaMaxX * TILE - player.w
+      : this.level.width * TILE - player.w - TILE;
     if (player.x < left) {
       player.x = left;
       if (player.vx < 0) player.vx = 0;

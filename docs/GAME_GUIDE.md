@@ -101,10 +101,12 @@ ground, more gaps and more room for the generator to place platforms and shards.
 **Make the boss harder.** In `entities.js`, section 4 (BOSS): raise
 `phaseOneMaxHp` or the Phase 2 multiplier in `startPhaseTwo()`, and shorten
 the timings in `beginAttack()` / `toIdle()`. Level 10 starts when the player
-drops into the arena; its Phase 2 adds moving spike platforms and an exoshield
-that stays active until its spawned enemies are defeated. The Grand Gem appears
-after the boss is defeated. `BOSS_DAMAGE` in core.js controls how much a touch
-costs the player.
+drops off the checkpoint ledge into the arena. The arena locks its camera and
+invisible side bounds, and deaths during the fight reset the boss to Phase 1.
+Its Phase 2 adds reachable moving spike platforms and an exoshield that stays
+active until its spawned enemies are defeated. The single Grand Gem appears
+only after Phase 2 is defeated; Level 10 has no regular shards or no-death star.
+`BOSS_DAMAGE` in core.js controls how much a touch costs the player.
 
 **Change the dialogue.** `TUTORIALS` at the top of the LEVELS section in
 `world.js`. The `{JUMP}`, `{FIRE}`, `{DASH}` and `{SWAP}` placeholders are

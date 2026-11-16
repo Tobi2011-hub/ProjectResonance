@@ -958,6 +958,7 @@ export class Boss {
   }
 
   update(dt, player, engine) {
+    const world = engine.bossWorld || engine.world;
     this.animTime += dt;
     if (this.flash > 0) this.flash -= dt;
 
@@ -1015,7 +1016,7 @@ export class Boss {
     } else if (this.state === "dash") {
       this.timer -= dt;
       this.vx = this.facing * (this.phase === 2 ? 440 : 360);
-      if (moveActorX(this, this.vx * dt, engine.world)) {
+      if (moveActorX(this, this.vx * dt, world)) {
         this.vx = 0;
         this.timer = Math.min(this.timer, 0.08);
       }
@@ -1039,8 +1040,8 @@ export class Boss {
     } else if (this.state === "leap") {
       this.vx = clamp(this.vx, -150, 150);
       this.vy = Math.min(700, this.vy + GRAVITY * dt);
-      moveActorX(this, this.vx * dt, engine.world);
-      const hit = moveActorY(this, this.vy * dt, engine.world);
+      moveActorX(this, this.vx * dt, world);
+      const hit = moveActorY(this, this.vy * dt, world);
       if (hit === "ground") {
         this.vy = 0;
         this.onGround = true;

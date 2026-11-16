@@ -540,21 +540,50 @@ const BOSS_STAGE = {
   id: 10,
   name: "Void Core",
   theme: "gray",
-  width: 48,
+  width: 45,
   accent: STAGE_ACCENTS[10],
-  spawn: [24, 2],
-  platforms: [[0, 15, 48, 2], [3, 9, 4, 1], [41, 9, 4, 1], [9, 12, 3, 1], [36, 12, 3, 1]],
+  spawn: [2, 15],
+  platforms: [
+    [0, 15, 5, 2],
+    [6, 13, 3, 1],
+    [10, 11, 3, 1],
+    [12, 9, 2, 1],
+    [10, 7, 3, 1],
+    [12, 5, 5, 1],
+    [18, 7, 6, 1],
+    [14, 15, 29, 2],
+    [16, 13, 3, 1],
+    [19, 11, 3, 1],
+    [22, 9, 2, 1],
+    [29, 13, 3, 1],
+    [32, 11, 3, 1],
+    [35, 9, 3, 1],
+    [38, 7, 3, 1],
+  ],
   movers: [],
   trapSpikes: [],
   spikes: [],
   saws: [],
   enemies: [],
   stars: [],
-  checkpoints: [[4, 15]],
-  exit: [45, 15],
-  door: { x: 13, y: 8, h: 7 },
-  boss: { x: 32, y: 15, triggerY: 9, dropMinX: 18, dropMaxX: 30, cameraX: 100, grandGem: [32, 14] },
-  tutorials: [{ x: 3, y: 10, w: 3, h: 4, ...TUTORIALS[10][0] }],
+  checkpoints: [[21, 7]],
+  exit: [41, 15],
+  boss: {
+    x: 29,
+    y: 15,
+    minX: 15,
+    maxX: 43,
+    arenaMinX: 14,
+    arenaMaxX: 43,
+    triggerY: 11,
+    dropMinX: 24,
+    dropMaxX: 28,
+    dropCeilingY: 7,
+    cameraX: 224,
+    collisionPlatforms: [[14, 15, 29, 2]],
+    grandGem: [29, 14],
+  },
+  tutorials: [],
   secretOf: null,
   ability: null,
   reward: null,
@@ -952,6 +981,34 @@ export function drawTerrain(ctx, engine) {
   engine.movers.forEach((mover) => {
     const px = Math.round(mover.x - camera.x);
     const py = Math.round(mover.y);
+    if (mover.bossHazard) {
+      ctx.save();
+      ctx.shadowColor = mover.spikeActive ? "#ff9f45" : "#4be3ff";
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = "#07101d";
+      ctx.fillRect(px - 3, py - 4, mover.w + 6, mover.h + 8);
+      ctx.shadowBlur = 0;
+      const core = ctx.createLinearGradient(0, py, 0, py + mover.h);
+      core.addColorStop(0, "#d8fbff");
+      core.addColorStop(0.25, mover.spikeActive ? "#ff9f45" : "#4be3ff");
+      core.addColorStop(1, "#17385a");
+      ctx.fillStyle = core;
+      ctx.fillRect(px, py, mover.w, mover.h);
+      ctx.fillStyle = "#f4feff";
+      ctx.fillRect(px + 3, py + 1, mover.w - 6, 1);
+      ctx.fillStyle = mover.spikeActive ? "#fff0ce" : "#a8f4ff";
+      const pulse = 0.65 + Math.sin(engine.time * 8 + mover.phase) * 0.25;
+      ctx.globalAlpha = pulse;
+      for (let i = 5; i < mover.w - 4; i += 12) {
+        ctx.fillRect(px + i, py + 4, 5, 2);
+      }
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = mover.spikeActive ? "#ffd166" : "#b9f8ff";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px + 0.5, py + 0.5, mover.w - 1, mover.h - 1);
+      ctx.restore();
+      return;
+    }
     ctx.fillStyle = "#0b1020";
     ctx.fillRect(px - 2, py - 2, mover.w + 4, mover.h + 4);
     const grad = ctx.createLinearGradient(0, py, 0, py + mover.h);
