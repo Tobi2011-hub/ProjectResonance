@@ -1130,7 +1130,7 @@ export function drawShards(ctx, engine) {
 }
 
 export function drawItems(ctx, engine) {
-  const { camera, checkpoints, level, exitActive, time } = engine;
+  const { assets, camera, checkpoints, level, exitActive, time } = engine;
 
   checkpoints.forEach((cp) => {
     const size = 44;
