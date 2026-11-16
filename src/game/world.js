@@ -392,7 +392,7 @@ function buildStage(cfg) {
     if (pinches) platforms.splice(i, 1);
   }
 
-  // five stars on the highest reachable shelves
+  // Five resonance shards sit on the highest reachable shelves.
   const candidates = platforms.filter((p) => p[2] >= 2);
   const spotFor = (tx) => {
     let best = null;
@@ -411,7 +411,7 @@ function buildStage(cfg) {
     if (span) checkpoints.push([clampInt(tx, span.x + 1, span.end - 1), span.top]);
   });
 
-  // never leave a star buried in rock
+  // Never leave a shard buried in rock.
   const solidSet = new Set();
   platforms.forEach(([px, py, pw, ph = 1]) => {
     for (let ty = py; ty < py + ph; ty += 1) {
@@ -474,6 +474,7 @@ function buildStage(cfg) {
     saws,
     enemies,
     stars,
+    accent: STAGE_ACCENTS[cfg.id] || "#4be3ff",
     coins,
     ammo,
     fruits,
@@ -502,14 +503,35 @@ const MAIN = [
   { id: 9, name: "Skyline Zero", theme: "cyan", width: 2120, seed: 9909, hard: 0.78 },
 ];
 
+const STAGE_ACCENTS = {
+  1: "#75f0b5",
+  2: "#74baff",
+  3: "#ff896e",
+  4: "#c18aff",
+  5: "#5edcc8",
+  6: "#ff72b6",
+  7: "#c7eb70",
+  8: "#9b8cff",
+  9: "#57d9ef",
+  10: "#ff668f",
+  11: "#70d5ff",
+  12: "#d18cff",
+  13: "#78f0df",
+  14: "#b8dc70",
+  15: "#ff9d67",
+  16: "#e18bff",
+  17: "#6ce9a8",
+  18: "#7b9dff",
+};
+
 const SECRETS = [
   { id: 11, name: "Rift: Aerial Ascent", theme: "cyan", width: 300, seed: 1111, hard: 0.5, secretOf: 1, ability: "leap", reward: "AERIAL LEAP" },
   { id: 12, name: "Rift: Glass Gauntlet", theme: "violet", width: 330, seed: 1212, hard: 0.62, secretOf: 2, ability: "phase", reward: "PHASE DASH" },
   { id: 13, name: "Rift: Windward Spires", theme: "blue", width: 360, seed: 1313, hard: 0.7, secretOf: 3, ability: "glide", reward: "FEATHERFALL" },
-  { id: 14, name: "Rift: Deep Vault", theme: "brown", width: 390, seed: 1414, hard: 0.78, secretOf: 4, ability: "magnet", reward: "STAR MAGNET" },
+  { id: 14, name: "Rift: Deep Vault", theme: "brown", width: 390, seed: 1414, hard: 0.78, secretOf: 4, ability: "magnet", reward: "SHARD MAGNET" },
   { id: 15, name: "Rift: Overdrive Foundry", theme: "yellow", width: 420, seed: 1515, hard: 0.86, secretOf: 5, ability: "overdrive", reward: "OVERDRIVE" },
-  // Six-star vaults: only open when the parent stage is perfected.
-  { id: 16, name: "Vault: Star Shrine", theme: "purple", width: 400, seed: 1616, hard: 0.66, starOf: 2, reward: "ORBS" },
+  // Perfect-clear vaults open when the parent stage has every shard.
+  { id: 16, name: "Vault: Shard Shrine", theme: "purple", width: 400, seed: 1616, hard: 0.66, starOf: 2, reward: "ORBS" },
   { id: 17, name: "Vault: Echo Hollow", theme: "violet", width: 440, seed: 1717, hard: 0.74, starOf: 4, reward: "ORBS" },
   { id: 18, name: "Vault: Resonance Deep", theme: "cyan", width: 480, seed: 1818, hard: 0.84, starOf: 6, reward: "ORBS" },
 ];
@@ -520,6 +542,7 @@ const BOSS_STAGE = {
   theme: "gray",
   width: 48,
   boss: true,
+  accent: STAGE_ACCENTS[10],
   spawn: [2, 15],
   platforms: [[0, 15, 48, 2], [3, 9, 4, 1], [41, 9, 4, 1], [18, 5, 6, 1], [9, 12, 3, 1], [36, 12, 3, 1]],
   movers: [],
@@ -549,7 +572,7 @@ export function getLevel(id) {
 //  Backgrounds are generated per theme (no image files) and each stage's floor,
 //  platforms and sky use its own palette from PALETTES below.
 //  TUNE: PALETTES colours (edit hex freely), parallax factors in
-//  drawBackground(), star size/glow in drawStars().
+//  drawBackground(), shard size/glow in drawShards().
 // ---------------------------------------------------------------------------
 
 const PALETTES = {
@@ -1061,42 +1084,53 @@ export function drawHazards(ctx, engine) {
   });
 }
 
-function drawStarShape(ctx, cx, cy, radius, rotation = 0) {
+function drawShardShape(ctx, cx, cy, size) {
   ctx.beginPath();
-  for (let i = 0; i < 10; i += 1) {
-    const angle = rotation - Math.PI / 2 + (i * Math.PI) / 5;
-    const r = i % 2 === 0 ? radius : radius * 0.44;
-    const px = cx + Math.cos(angle) * r;
-    const py = cy + Math.sin(angle) * r;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
+  ctx.moveTo(cx, cy - size);
+  ctx.lineTo(cx + size * 0.72, cy - size * 0.32);
+  ctx.lineTo(cx + size * 0.58, cy + size * 0.62);
+  ctx.lineTo(cx, cy + size);
+  ctx.lineTo(cx - size * 0.58, cy + size * 0.62);
+  ctx.lineTo(cx - size * 0.72, cy - size * 0.32);
   ctx.closePath();
 }
 
-export function drawStars(ctx, engine) {
-  const { camera, time, starEntities } = engine;
-  starEntities.forEach((star) => {
-    if (star.taken) return;
-    const bob = Math.sin(time * 3 + star.bob) * 3;
-    const cx = Math.round(star.x - camera.x);
-    const cy = Math.round(star.y + bob);
+export function drawShards(ctx, engine) {
+  const { camera, time, shardEntities, level } = engine;
+  const accent = level.accent || "#4be3ff";
+  shardEntities.forEach((shard) => {
+    if (shard.taken) return;
+    const bob = Math.sin(time * 3 + shard.bob) * 3;
+    const cx = Math.round(shard.x - camera.x);
+    const cy = Math.round(shard.y + bob);
     ctx.save();
-    ctx.shadowColor = "#ffd166";
-    ctx.shadowBlur = 16;
-    drawStarShape(ctx, cx, cy, 8, time * 1.4 + star.bob);
-    ctx.fillStyle = "#ffe9a3";
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.sin(time * 1.4 + shard.bob) * 0.12);
+    ctx.translate(-cx, -cy);
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 18;
+    drawShardShape(ctx, cx, cy, 10);
+    ctx.fillStyle = "#f4fbff";
     ctx.fill();
     ctx.shadowBlur = 0;
-    drawStarShape(ctx, cx, cy, 5, time * 1.4 + star.bob);
-    ctx.fillStyle = "#ffd166";
+    drawShardShape(ctx, cx, cy, 7);
+    ctx.fillStyle = accent;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 6);
+    ctx.lineTo(cx + 2, cy);
+    ctx.lineTo(cx, cy + 6);
+    ctx.lineTo(cx - 2, cy);
+    ctx.closePath();
+    ctx.fillStyle = "#ffffff";
+    ctx.globalAlpha = 0.72;
     ctx.fill();
     ctx.restore();
   });
 }
 
 export function drawItems(ctx, engine) {
-  const { assets, camera, checkpoints, level, exitActive, time } = engine;
+  const { camera, checkpoints, level, exitActive, time } = engine;
 
   checkpoints.forEach((cp) => {
     const size = 44;
@@ -1121,19 +1155,53 @@ export function drawItems(ctx, engine) {
     }
   });
 
-  const exitX = Math.round(level.exit[0] * TILE - camera.x - 22);
-  const exitY = Math.round(level.exit[1] * TILE - 44);
+  const centerX = Math.round(level.exit[0] * TILE - camera.x);
+  const baseY = Math.round(level.exit[1] * TILE);
+  const topY = baseY - 64;
+  const accent = level.accent || "#4be3ff";
   ctx.save();
-  const pulse = 0.55 + Math.sin(time * 4) * 0.25;
-  ctx.globalAlpha = exitActive ? 1 : 0.35;
-  if (assets.exit_on && exitActive) ctx.drawImage(assets.exit_on, exitX, exitY, 44, 44);
-  else if (assets.exit) ctx.drawImage(assets.exit, exitX, exitY, 44, 44);
-  ctx.globalAlpha = exitActive ? pulse : 0.12;
-  const glow = ctx.createRadialGradient(exitX + 22, exitY + 22, 2, exitX + 22, exitY + 22, 44);
-  glow.addColorStop(0, "#ffd166");
-  glow.addColorStop(1, "rgba(255,209,102,0)");
+  const pulse = 0.72 + Math.sin(time * 3.4) * 0.2;
+  ctx.globalAlpha = exitActive ? 0.34 + pulse * 0.3 : 0.1;
+  const glow = ctx.createRadialGradient(centerX, baseY - 31, 2, centerX, baseY - 31, 76);
+  glow.addColorStop(0, accent);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glow;
-  ctx.fillRect(exitX - 22, exitY - 22, 88, 88);
+  ctx.fillRect(centerX - 76, topY - 22, 152, 100);
+
+  ctx.globalAlpha = exitActive ? 1 : 0.46;
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = exitActive ? 18 + pulse * 12 : 0;
+  ctx.beginPath();
+  ctx.moveTo(centerX - 29, baseY);
+  ctx.lineTo(centerX - 29, baseY - 38);
+  ctx.quadraticCurveTo(centerX - 29, topY, centerX, topY);
+  ctx.quadraticCurveTo(centerX + 29, topY, centerX + 29, baseY - 38);
+  ctx.lineTo(centerX + 29, baseY);
+  ctx.closePath();
+  ctx.fillStyle = "#080d1a";
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = accent;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.beginPath();
+  ctx.ellipse(centerX, baseY - 34, 17 + pulse * 2, 26 + pulse * 2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = exitActive ? `${accent}55` : "#111629";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = exitActive ? "#f4fbff" : "#596078";
+  ctx.globalAlpha = exitActive ? 0.6 + pulse * 0.3 : 0.3;
+  ctx.stroke();
+
+  ctx.globalAlpha = exitActive ? 0.9 : 0.55;
+  ctx.fillStyle = accent;
+  ctx.fillRect(centerX - 36, baseY - 8, 7, 8);
+  ctx.fillRect(centerX + 29, baseY - 8, 7, 8);
+  ctx.font = "bold 8px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(exitActive ? "GOAL" : "SEALED", centerX, topY - 9);
   ctx.restore();
 }
 

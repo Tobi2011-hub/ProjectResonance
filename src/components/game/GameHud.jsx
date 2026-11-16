@@ -1,8 +1,8 @@
 /**
  * GAME HUD — compact tactical overlay. Everything is drawn from engine.buildHud():
- * HP, lives, stars, ammo, coins, boss health, dash pips and the weapon loadout.
+ * HP, lives, resonance shards, ammo, coins, boss health, dash pips and loadout.
  */
-import { Coins, Crosshair, Gem, Heart, RotateCcw, Shield, Star, Zap } from "lucide-react";
+import { Coins, Crosshair, Gem, Heart, RotateCcw, Shield, Zap } from "lucide-react";
 import PixelFontText from "@/components/game/PixelFontText";
 import { ABILITIES, WEAPONS } from "@/game/core";
 
@@ -51,14 +51,18 @@ export default function GameHud({ hud, onReload }) {
                 </div>
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <Star
+                    <Gem
                       key={i}
-                      className={`h-3.5 w-3.5 ${
-                        i < hud.stars ? (i === 5 ? "fill-[#ff3d8b] text-[#ff3d8b]" : "fill-[#ffd166] text-[#ffd166]") : "text-white/15"
-                      }`}
+                      className="h-3.5 w-3.5"
+                      style={{
+                        color: i < hud.shards ? hud.accent : "rgba(255,255,255,0.2)",
+                        fill: i < hud.shards ? hud.accent : "transparent",
+                      }}
                     />
                   ))}
-                  <span className="pa-pixel ml-1 text-[9px] text-[#ffd166]/70">{hud.collected}/5</span>
+                  <span className="pa-pixel ml-1 text-[7px]" style={{ color: hud.accent }}>
+                    {hud.collected}/5 SHARDS
+                  </span>
                 </div>
               </div>
             </div>
@@ -76,7 +80,12 @@ export default function GameHud({ hud, onReload }) {
 
           <div className="min-w-0 flex-1 text-center">
             <div className="inline-flex items-center gap-2 border border-white/10 bg-[#060a16]/70 px-2.5 py-1">
-              <PixelFontText text={`S${String(hud.stage).padStart(2, "0")}`} className="text-[9px] text-[#4be3ff]/70" spacing={0.04} />
+              <PixelFontText
+                text={`S${String(hud.stage).padStart(2, "0")}`}
+                className="text-[9px]"
+                style={{ color: hud.accent }}
+                spacing={0.04}
+              />
               <span className="h-2.5 w-px bg-white/15" />
               <span className="pa-pixel max-w-[140px] truncate text-[9px] text-white sm:max-w-none">{hud.stageName}</span>
               {hud.dual ? (

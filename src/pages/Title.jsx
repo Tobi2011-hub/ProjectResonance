@@ -231,8 +231,8 @@ export default function Title() {
 
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-[#c6d2f2]/40">Stars</dt>
-                  <dd className="text-[#ffd166]">{save ? `${totalStars(save)} / ${MAX_STARS}` : "—"}</dd>
+                  <dt className="text-[#c6d2f2]/40">Resonance shards</dt>
+                  <dd className="text-[#4be3ff]">{save ? `${totalStars(save)} / ${MAX_STARS}` : "—"}</dd>
                 </div>
               </dl>
               <div className="mt-5 grid grid-cols-2 gap-2 border-t border-[#2a2f52] pt-4">

@@ -777,7 +777,7 @@ export const ABILITIES = {
   leap: { id: "leap", name: "Aerial Leap", blurb: "Gain a mid-air jump; rank 2 grants a triple jump.", glyph: "II" },
   phase: { id: "phase", name: "Phase Dash", blurb: "Dash through danger; rank 2 adds vertical dashes.", glyph: "><" },
   glide: { id: "glide", name: "Featherfall", blurb: "Glide while falling; rank 2 adds a horizontal float.", glyph: "~~" },
-  magnet: { id: "magnet", name: "Star Chaser", blurb: "Attract nearby pickups; rank 2 greatly extends its reach.", glyph: "**" },
+  magnet: { id: "magnet", name: "Shard Chaser", blurb: "Attract nearby pickups; rank 2 greatly extends its reach.", glyph: "**" },
   overdrive: { id: "overdrive", name: "Overdrive", blurb: "Increase weapon damage by 10%; rank 2 increases it by 20%.", glyph: "!!" },
   wallcling: { id: "wallcling", name: "Wall Cling", blurb: "Grip walls while holding toward them; rank 2 stops your fall completely.", glyph: "||" },
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, HeartCrack, Lock, RotateCcw } from "lucide-react";
+import { ArrowLeft, Gem, HeartCrack, Lock, RotateCcw } from "lucide-react";
 import { ClearOverlay, GameCanvas } from "@/components/game/GameUI";
 import { getLevel } from "@/game/world";
 import { completeStage, isStageUnlocked, loadSave } from "@/game/core";
@@ -34,9 +34,9 @@ export default function Stage() {
         <p className="pa-pixel mt-5 text-[11px] text-white">STAGE {level.id} LOCKED</p>
         <p className="mt-3 max-w-sm text-sm tracking-wide text-[#c6d2f2]/50">
           {level.starOf
-            ? `Collect all six stars on Stage ${level.starOf} — five pickups plus a deathless clear — to open this vault.`
+            ? `Collect all six resonance shards on Stage ${level.starOf} — five pickups plus a flawless clear — to open this vault.`
             : level.secretOf
-            ? `Collect all five stars on Stage ${level.secretOf} in a single run to open this rift.`
+            ? `Collect all five resonance shards on Stage ${level.secretOf} in a single run to open this rift.`
             : "Clear the previous stage to open this node."}
         </p>
         <button
@@ -58,8 +58,11 @@ export default function Stage() {
       coinsTotal: payload.coinsTotal,
     });
     setClear({
-      stars: payload.stars,
+      shards: payload.shards,
+      collected: payload.collected,
+      lives: payload.lives,
       noDeath: payload.noDeath,
+      nextStage: level.id < 10 && isStageUnlocked(result.save, level.id + 1) ? level.id + 1 : null,
       unlockedSecret: result.unlockedSecret,
       unlockedAbility: result.unlockedAbility,
       replacementAbility: result.replacementAbility,
@@ -88,20 +91,25 @@ export default function Stage() {
         <div className="fixed inset-0 z-30 flex items-center justify-center overflow-hidden bg-[#04050b] px-5">
           <div className="pointer-events-none absolute inset-0 pa-scanlines opacity-50" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(75,227,255,0.12),transparent_65%)]" />
-          <section aria-label={`Entering ${level.name}`} className="pa-panel pa-fade-up relative w-full max-w-2xl p-6 text-center sm:p-10">
-            <p className="pa-pixel text-[8px] tracking-[0.3em] text-[#4be3ff]">MISSION BRIEFING</p>
+          <section
+            aria-label={`Entering ${level.name}`}
+            className="pa-panel pa-fade-up relative w-full max-w-2xl p-6 text-center sm:p-10"
+            style={{ borderColor: `${level.accent}88` }}
+          >
+            <p className="pa-pixel text-[8px] tracking-[0.3em]" style={{ color: level.accent }}>MISSION BRIEFING</p>
             <p className="pa-pixel mt-5 text-[9px] text-[#c6d2f2]/55">ENTERING STAGE {String(level.id).padStart(2, "0")}</p>
             <h1 className="pa-pixel pa-title mt-4 text-xl leading-relaxed text-white sm:text-3xl">{level.name}</h1>
             <div className="mx-auto mt-7 flex max-w-sm items-center justify-center gap-3 border-y border-[#2a2f52] py-4">
-              <span className="pa-pixel text-[8px] text-[#ffd166]">★</span>
+              <Gem className="h-4 w-4 shrink-0" style={{ color: level.accent }} />
               <p className="pa-pixel text-[7px] leading-relaxed text-[#c6d2f2]/65">
-                FIND FIVE STARS · CLEAR WITHOUT LOSING A LIFE TO EARN THE SIXTH
+                FIND FIVE SHARDS · CLEAR FLAWLESSLY FOR THE BONUS
               </p>
             </div>
             <button
               type="button"
               onClick={() => setBriefing(false)}
-              className="pa-pixel mt-7 min-h-11 bg-[#4be3ff] px-6 py-3 text-[8px] text-[#05060d] hover:bg-[#8cf0ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166]"
+              className="pa-pixel mt-7 min-h-11 px-6 py-3 text-[8px] text-[#05060d] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              style={{ backgroundColor: level.accent }}
             >
               BEGIN STAGE
             </button>
@@ -111,7 +119,9 @@ export default function Stage() {
       {clear ? (
         <ClearOverlay
           level={level}
-          stars={clear.stars}
+          shards={clear.shards}
+          collected={clear.collected}
+          lives={clear.lives}
           noDeath={clear.noDeath}
           unlockedSecret={clear.unlockedSecret}
           unlockedAbility={clear.unlockedAbility}
@@ -122,6 +132,8 @@ export default function Stage() {
           orbGain={clear.orbGain}
           coins={clear.coins}
           coinsTotal={clear.coinsTotal}
+          nextStage={clear.nextStage}
+          onNextStage={() => navigate(`/stage/${clear.nextStage}`)}
           onContinue={() => navigate("/world")}
         />
       ) : null}

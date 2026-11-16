@@ -4,7 +4,7 @@
  * and the stage-clear card.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Gem, Maximize, Minimize, Pause, Play, RotateCcw, Settings, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowRight, Gem, Heart, Maximize, Minimize, Pause, Play, RotateCcw, Settings, Sparkles, Trophy } from "lucide-react";
 import { loadAssets } from "@/game/world";
 import {
   ABILITIES,
@@ -22,7 +22,7 @@ import {
 import GameEngine from "@/game/engine";
 import GameHud from "@/components/game/GameHud";
 import TouchControls from "@/components/game/TouchControls";
-import StarReveal from "@/components/game/StarReveal";
+import ShardReveal from "@/components/game/ShardReveal";
 import { SettingsPanel } from "@/components/title/TitlePanels";
 
 export function PixelBackdrop({ variant = "blue" }) {
@@ -63,7 +63,9 @@ export function NarrativeBox({ narrative, onClose }) {
 
 export function ClearOverlay({
   level,
-  stars,
+  shards,
+  collected = 0,
+  lives = 0,
   noDeath,
   unlockedSecret,
   unlockedAbility,
@@ -74,25 +76,57 @@ export function ClearOverlay({
   orbGain = 0,
   coins = 0,
   coinsTotal = 0,
+  nextStage = null,
   autoReturn = false,
   onContinue,
+  onNextStage,
 }) {
+  const accent = level.accent || "#4be3ff";
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#04050b]/94 px-4 py-8">
-      <div className="pa-panel pa-fade-up relative w-full max-w-2xl overflow-hidden p-6 text-center sm:p-10">
-        <div className="absolute inset-0 opacity-25 pa-bg-tile" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#04050b]/95 px-3 py-4 sm:px-5 sm:py-8">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Victory: ${level.name}`}
+        className="pa-panel pa-fade-up relative max-h-[94dvh] w-full max-w-3xl overflow-y-auto p-5 text-center sm:p-9"
+        style={{ borderColor: `${accent}88`, boxShadow: `0 0 70px ${accent}22, 0 18px 50px rgba(0,0,0,.65)` }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{ background: `radial-gradient(ellipse at 50% 0%, ${accent}2b, transparent 62%)` }}
+        />
         <div className="relative">
-          <p className="pa-pixel text-[8px] tracking-[0.2em] text-[#4be3ff]">
-            {level.id === 10 ? "VOID CORE DESTROYED" : level.secretOf ? "RIFT STAGE CLEARED" : "STAGE COMPLETE"}
+          <div
+            className="mx-auto grid h-16 w-16 place-items-center rounded-full border sm:h-20 sm:w-20"
+            style={{ borderColor: `${accent}88`, background: `${accent}18`, boxShadow: `0 0 35px ${accent}40` }}
+          >
+            <Trophy className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: accent }} />
+          </div>
+          <p className="pa-pixel mt-4 text-[8px] tracking-[0.3em]" style={{ color: accent }}>
+            {level.id === 10 ? "VOID CORE DESTROYED" : level.secretOf ? "RIFT CLEARED" : "MISSION COMPLETE"}
           </p>
-          <h2 className="pa-pixel pa-title mt-5 text-2xl leading-tight text-white sm:text-4xl">
-            {level.id === 10 ? "RESONANCE SECURED" : "STAGE CLEARED"}
+          <h2 className="pa-pixel pa-title mt-3 text-2xl leading-tight text-white sm:text-4xl">
+            {level.id === 10 ? "RESONANCE SECURED" : "VICTORY"}
           </h2>
-          <p className="mt-3 text-sm tracking-[0.18em] text-[#c6d2f2]/55 sm:text-base">
-            STAGE {String(level.id).padStart(2, "0")} — {level.name}
+          <p className="mt-3 text-sm tracking-[0.16em] text-[#c6d2f2]/65 sm:text-base">
+            STAGE {String(level.id).padStart(2, "0")} <span className="text-white/25">/</span> {level.name}
           </p>
 
-          <StarReveal stars={stars} noDeath={noDeath} />
+          <ShardReveal shards={shards} noDeath={noDeath} accent={accent} />
+
+          <div className="mx-auto mt-6 grid max-w-xl grid-cols-3 gap-2 sm:gap-3">
+            {[
+              { label: "SHARDS", value: `${collected} / 5`, icon: Gem },
+              { label: "LIVES LEFT", value: String(lives), icon: Heart },
+              { label: "ORB REWARD", value: `+${orbGain}`, icon: Sparkles },
+            ].map(({ label, value, icon: Icon }) => (
+              <div key={label} className="border border-white/10 bg-[#080b18]/75 px-2 py-3 sm:px-4 sm:py-4">
+                <Icon className="mx-auto h-4 w-4 sm:h-5 sm:w-5" style={{ color: accent }} />
+                <p className="pa-pixel mt-2 text-[6px] text-[#c6d2f2]/50 sm:text-[7px]">{label}</p>
+                <p className="pa-pixel mt-2 text-[9px] text-white sm:text-[11px]">{value}</p>
+              </div>
+            ))}
+          </div>
 
           {unlockedAbility ? (
             <div className="mt-7 border border-[#7af6c8]/40 bg-[#7af6c8]/10 px-4 py-4 text-left sm:flex sm:items-center sm:justify-between">
@@ -164,25 +198,37 @@ export function ClearOverlay({
             </div>
           ) : null}
 
-          <div className="mt-7 flex items-center justify-between border-t border-[#2a2f52] pt-4">
-            <p className="pa-pixel flex items-center gap-2 text-[8px] text-[#c6d2f2]/50">
-              <Trophy className="h-3 w-3 text-[#4be3ff]" />
-              {level.id === 10 ? "RECORD SAVED" : orbGain ? `+${orbGain} ORBS` : `STAGE ${level.id + 1} READY`}
+          <div className="mt-7 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="pa-pixel flex items-center justify-center gap-2 text-[7px] text-[#c6d2f2]/55 sm:justify-start">
+              <Trophy className="h-3.5 w-3.5" style={{ color: accent }} />
+              {level.id === 10 ? "FINAL RECORD SAVED" : `+${orbGain} ORBS ADDED TO YOUR SAVE`}
             </p>
             {autoReturn ? (
               <p className="pa-pixel text-[7px] text-[#c6d2f2]/30">RETURNING TO WORLD MAP…</p>
             ) : (
-              <button
-                type="button"
-                onClick={onContinue}
-                className="pa-pixel flex min-h-10 items-center gap-2 bg-[#4be3ff] px-4 py-2 text-[8px] text-[#05060d] hover:bg-[#7af6c8]"
-              >
-                <ArrowLeft className="h-3 w-3" /> WORLD MAP
-              </button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={onContinue}
+                  className="pa-pixel flex min-h-11 items-center justify-center gap-2 border border-white/15 px-4 py-2 text-[8px] text-[#c6d2f2]/70 hover:border-white/40 hover:text-white"
+                >
+                  <ArrowLeft className="h-3 w-3" /> WORLD MAP
+                </button>
+                {nextStage ? (
+                  <button
+                    type="button"
+                    onClick={onNextStage}
+                    className="pa-pixel flex min-h-11 items-center justify-center gap-2 px-5 py-2 text-[8px] text-[#05060d] transition-transform hover:scale-[1.02]"
+                    style={{ background: accent }}
+                  >
+                    NEXT STAGE <ArrowRight className="h-3 w-3" />
+                  </button>
+                ) : null}
+              </div>
             )}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

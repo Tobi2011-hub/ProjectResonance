@@ -1,12 +1,12 @@
 /**
  * ENGINE — the "director" of a stage.
  * Owns the frame loop (requestAnimationFrame), runs the fixed 120Hz physics
- * ticks, the camera, enemies, projectiles, checkpoints, stars, lives, the
+ * ticks, the camera, enemies, projectiles, checkpoints, resonance shards, lives, the
  * boss and the level-complete/fail flow.
  *
  * TUNE: gravity/speeds in constants.js. Camera smoothly follows the player —
  * see updateCamera() (CAM_LERP / dead-zone numbers) if the camera feels too
- * lazy or too twitchy. Lives / star rules: killPlayer() and finishStage().
+ * lazy or too twitchy. Lives / shard rules: killPlayer() and finishStage().
  * Do not rename this class: pages/Stage.jsx imports it.
  */
 import {
@@ -48,7 +48,7 @@ import {
   drawItems,
   drawPlayer,
   drawProjectiles,
-  drawStars,
+  drawShards,
   drawTerrain,
 } from "./world";
 
@@ -108,8 +108,8 @@ export default class GameEngine {
 
     const starState = save.stars?.[level.id] || [];
     this.stars = Array.from({ length: 6 }, (_, i) => Boolean(starState[i]));
-    this.runStars = [false, false, false, false, false];
-    this.starEntities = level.stars.map(([x, y], i) => ({
+    this.runShards = [false, false, false, false, false];
+    this.shardEntities = level.stars.map(([x, y], i) => ({
       x: x * TILE + 8,
       y: y * TILE + 8,
       i,
@@ -762,20 +762,20 @@ export default class GameEngine {
       }
     });
 
-    this.starEntities.forEach((star) => {
-      if (star.taken) return;
-      this.attractPickup(star, dt);
-      const rect = { x: star.x - 11, y: star.y - 11, w: 22, h: 22 };
+    this.shardEntities.forEach((shard) => {
+      if (shard.taken) return;
+      this.attractPickup(shard, dt);
+      const rect = { x: shard.x - 11, y: shard.y - 11, w: 22, h: 22 };
       if (overlaps(rect, this.player)) {
-        star.taken = true;
-        this.runStars[star.i] = true;
-        this.stars[star.i] = true;
+        shard.taken = true;
+        this.runShards[shard.i] = true;
+        this.stars[shard.i] = true;
         sfx("star");
-        burst(this.effects, star.x, star.y, { count: 18, color: "#ffd166", speed: 130, life: 0.6 });
-        ring(this.effects, star.x, star.y, 26, "#ffd166", 0.34);
-        addFlash(this.effects, star.x, star.y, 22, "#ffd166");
+        burst(this.effects, shard.x, shard.y, { count: 18, color: this.level.accent, speed: 130, life: 0.6 });
+        ring(this.effects, shard.x, shard.y, 26, this.level.accent, 0.34);
+        addFlash(this.effects, shard.x, shard.y, 22, this.level.accent);
         this.hitstop = Math.max(this.hitstop, 0.04);
-        this.hooks.onStar(star.i, [...this.stars]);
+        this.hooks.onStar(shard.i, [...this.stars]);
         this.pushHud(true);
       }
     });
@@ -1030,7 +1030,8 @@ export default class GameEngine {
     this.hooks.onComplete({
       stage: this.level.id,
       stars: [...this.stars],
-      collected: this.runStars.filter(Boolean).length,
+      shards: [...this.runShards],
+      collected: this.runShards.filter(Boolean).length,
       noDeath,
       lives: this.lives,
       coins: this.coinsTaken,
@@ -1074,9 +1075,10 @@ export default class GameEngine {
       stageName: this.level.name,
       health: this.player.health,
       maxHealth: this.player.maxHealth,
-      stars: this.stars.filter(Boolean).length,
-      collected: this.runStars.filter(Boolean).length,
-      totalStars: 6,
+      shards: this.stars.filter(Boolean).length,
+      collected: this.runShards.filter(Boolean).length,
+      totalShards: 6,
+      accent: this.level.accent,
       lives: this.lives,
       deaths: this.deaths,
       weapon: weaponType,
@@ -1110,7 +1112,7 @@ export default class GameEngine {
     const key = [
       hud.health,
       hud.lives,
-      hud.stars,
+      hud.shards,
       hud.collected,
       hud.weapon,
       hud.slot,
@@ -1159,7 +1161,7 @@ export default class GameEngine {
     drawDoor(ctx, this);
     drawHazards(ctx, this);
     drawItems(ctx, this);
-    drawStars(ctx, this);
+    drawShards(ctx, this);
     drawCoins(ctx, this);
     drawAmmo(ctx, this);
     drawFruit(ctx, this);

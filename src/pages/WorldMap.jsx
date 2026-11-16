@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Gem, Info, Lock, Play, ShieldAlert, ShoppingBag, Sparkles, Star, X } from "lucide-react";
+import { ArrowLeft, Check, Gem, Info, Lock, Play, ShieldAlert, ShoppingBag, Sparkles, X } from "lucide-react";
 import { PixelBackdrop } from "@/components/game/GameUI";
 import PixelFontText from "@/components/game/PixelFontText";
 import { LEVELS } from "@/game/world";
@@ -19,15 +19,15 @@ import {
   totalStars,
 } from "@/game/core";
 
-// One map node: icon (or padlock), star badge and the selected tooltip.
-function StageNode({ stage, name, x, y, unlocked, cleared, stars, selected, onSelect, onOpen }) {
+// One map node: icon (or padlock), shard badge and the selected tooltip.
+function StageNode({ stage, name, x, y, accent, unlocked, cleared, shards, selected, onSelect, onOpen }) {
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }}>
       {selected ? (
         <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 hidden w-max -translate-x-1/2 border border-[#4be3ff]/60 bg-[#070a18]/95 px-2.5 py-1.5 sm:block">
           <p className="pa-pixel text-[7px] text-white">{name}</p>
-          <p className="pa-pixel mt-1 flex items-center gap-1 text-[7px] text-[#ffd166]">
-            <Star className="h-2.5 w-2.5 fill-[#ffd166] text-[#ffd166]" /> Stars Found: {stars}/6
+          <p className="pa-pixel mt-1 flex items-center gap-1 text-[7px]" style={{ color: accent }}>
+            <Gem className="h-2.5 w-2.5 fill-current" /> Shards Found: {shards}/6
           </p>
         </div>
       ) : null}
@@ -38,6 +38,7 @@ function StageNode({ stage, name, x, y, unlocked, cleared, stars, selected, onSe
         onFocus={onSelect}
         onClick={onOpen}
         aria-label={`Stage ${stage} ${unlocked ? "" : "(locked)"}`}
+        style={selected ? { borderColor: accent, backgroundColor: `${accent}15`, boxShadow: `0 0 26px ${accent}55` } : undefined}
         className={`world-map__stage-node group relative grid h-11 w-11 touch-manipulation place-items-center border-2 transition-all duration-200 focus-visible:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd166] sm:h-16 sm:w-16 ${
           selected
             ? "scale-110 border-[#4be3ff] bg-[#4be3ff]/15 shadow-[0_0_26px_rgba(75,227,255,0.5)]"
@@ -50,15 +51,16 @@ function StageNode({ stage, name, x, y, unlocked, cleared, stars, selected, onSe
           <PixelFontText
             text={String(stage).padStart(2, "0")}
             className={`flex-nowrap text-[14px] sm:text-[20px] ${cleared ? "opacity-100" : "opacity-80"}`}
+            style={{ color: unlocked ? accent : undefined }}
             spacing={0.04}
           />
         ) : (
           <Lock className="h-4 w-4 text-[#c6d2f2]/25 sm:h-6 sm:w-6" />
         )}
-        {unlocked && stars > 0 ? (
+        {unlocked && shards > 0 ? (
           <span className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-0.5 border border-[#2a2f52] bg-[#070a18] px-1 py-0.5">
-            <Star className="h-2 w-2 fill-[#ffd166] text-[#ffd166]" />
-            <span className="pa-pixel text-[6px] text-[#ffd166]">{stars}</span>
+            <Gem className="h-2 w-2 fill-current" style={{ color: accent }} />
+            <span className="pa-pixel text-[6px]" style={{ color: accent }}>{shards}</span>
           </span>
         ) : null}
         {cleared ? <span className="absolute -right-1 -top-1 h-2 w-2 bg-[#7af6c8]" /> : null}
@@ -100,16 +102,17 @@ export default function WorldMap() {
   const level = LEVELS[selected - 1];
   const unlocked = isStageUnlocked(save, selected);
   const cleared = Boolean(save?.cleared?.includes(selected));
-  const selectedStars = save?.stars?.[selected] || [];
+  const selectedShards = save?.stars?.[selected] || [];
+  const accent = level?.accent || "#4be3ff";
 
   const deploy = (stage = selected) => {
     if (!isStageUnlocked(save, stage)) {
       sfx("hurt");
       const target = LEVELS[stage - 1];
       if (target?.starOf) {
-        setNotice(`VAULT LOCKED — COLLECT ALL SIX STARS ON STAGE ${String(target.starOf).padStart(2, "0")}`);
+        setNotice(`VAULT LOCKED — COLLECT ALL SIX SHARDS ON STAGE ${String(target.starOf).padStart(2, "0")}`);
       } else if (target?.secretOf) {
-        setNotice(`RIFT LOCKED — FIVE-STAR STAGE ${String(target.secretOf).padStart(2, "0")} IN A SINGLE RUN`);
+        setNotice(`RIFT LOCKED — COLLECT FIVE SHARDS ON STAGE ${String(target.secretOf).padStart(2, "0")} IN ONE RUN`);
       } else {
         setNotice(`STAGE ${String(stage).padStart(2, "0")} LOCKED — CLEAR STAGE ${String(stage - 1).padStart(2, "0")} FIRST`);
       }
@@ -164,9 +167,9 @@ export default function WorldMap() {
           </button>
           <div className="grid grid-cols-3 items-center gap-x-2 gap-y-1 sm:flex sm:flex-wrap sm:gap-3">
             <PixelFontText text={CHARACTERS[save.character]?.name || ""} className="text-[10px] text-[#c6d2f2]/40" spacing={0.04} />
-            <span className="pa-pixel flex items-center gap-1 text-[10px] text-[#ffd166]">
-              <Star className="h-3.5 w-3.5 fill-[#ffd166] text-[#ffd166]" />
-              <PixelFontText text={`${totalStars(save)}/${MAX_STARS}`} className="text-[10px] text-[#ffd166]" spacing={0.04} />
+            <span className="pa-pixel flex items-center gap-1 text-[10px] text-[#4be3ff]">
+              <Gem className="h-3.5 w-3.5" />
+              <PixelFontText text={`${totalStars(save)}/${MAX_STARS}`} className="text-[10px] text-[#4be3ff]" spacing={0.04} />
             </span>
             <span className="pa-pixel flex items-center gap-1 text-[10px] text-[#ffd166]">
               <Gem className="h-3.5 w-3.5" />
@@ -212,11 +215,12 @@ export default function WorldMap() {
                 key={stageLevel.id}
                 stage={stageLevel.id}
                 name={stageLevel.name}
+                accent={stageLevel.accent}
                 x={POSITIONS[i].x}
                 y={POSITIONS[i].y}
                 unlocked={isStageUnlocked(save, stageLevel.id)}
                 cleared={Boolean(save.cleared?.includes(stageLevel.id))}
-                stars={stageStars(save, stageLevel.id)}
+                shards={stageStars(save, stageLevel.id)}
                 selected={selected === stageLevel.id}
                 onSelect={() => {
                   setSelected(stageLevel.id);
@@ -236,9 +240,9 @@ export default function WorldMap() {
               <PixelFontText text={`STAGE ${String(selected).padStart(2, "0")}`} className="text-[10px] text-[#4be3ff]/60" spacing={0.04} />
               <p className="pa-pixel mt-2 text-[14px] text-white">{level.name}</p>
               <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-[#c6d2f2]/45">
-                <span className="flex items-center gap-1 text-[#ffd166]">
-                  <Star className="h-3.5 w-3.5 fill-[#ffd166] text-[#ffd166]" />
-                  <PixelFontText text={`STARS FOUND: ${stageStars(save, selected)}/6`} className="text-[10px] text-[#ffd166]" spacing={0.04} />
+                <span className="flex items-center gap-1" style={{ color: accent }}>
+                  <Gem className="h-3.5 w-3.5 fill-current" />
+                  <PixelFontText text={`SHARDS FOUND: ${stageStars(save, selected)}/6`} className="text-[10px]" style={{ color: accent }} spacing={0.04} />
                 </span>
                 <span className="world-map__stage-meta">{cleared ? "Cleared" : unlocked ? "Ready" : "Locked"}</span>
                 <span className="world-map__stage-meta">Primary {WEAPON_TYPES[save.primary]?.name}</span>
@@ -275,7 +279,7 @@ export default function WorldMap() {
               <p className="pa-pixel flex items-center gap-2 text-[8px] text-[#7af6c8]">
                 <Sparkles className="h-3 w-3" /> RIFT STAGES
               </p>
-              <p className="pa-pixel hidden text-[7px] text-[#c6d2f2]/35 sm:block">FIVE STARS IN ONE RUN OPENS THE RIFT</p>
+              <p className="pa-pixel hidden text-[7px] text-[#c6d2f2]/35 sm:block">FIVE SHARDS IN ONE RUN OPENS THE RIFT</p>
               <p className="pa-pixel text-[6px] text-[#c6d2f2]/35 sm:hidden">SWIPE FOR MORE</p>
             </div>
             <div className="world-map__secret-grid mt-2 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-2 sm:overflow-visible sm:pb-0">
@@ -309,7 +313,7 @@ export default function WorldMap() {
                     </p>
                     <p className="pa-pixel mt-1 text-[7px] text-[#c6d2f2]/25">
                       {secret.starOf
-                        ? `SIX STARS ON STAGE ${secret.starOf}`
+                        ? `SIX SHARDS ON STAGE ${secret.starOf}`
                         : owned
                         ? "ACQUIRED"
                         : `CLEAR STAGE ${secret.secretOf}`}
@@ -328,7 +332,7 @@ export default function WorldMap() {
 
         <footer className="hidden shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-2 sm:flex">
           <p className="pa-pixel text-[7px] text-[#c6d2f2]/25">← → SELECT NODE · ENTER DETAILS</p>
-          <p className="pa-pixel text-[7px] text-[#c6d2f2]/20">3 LIVES PER STAGE · DEATHLESS CLEAR EARNS THE SIXTH STAR</p>
+          <p className="pa-pixel text-[7px] text-[#c6d2f2]/20">3 LIVES PER STAGE · FLAWLESS CLEAR EARNS THE BONUS SHARD</p>
         </footer>
       </div>
       {detailsOpen ? (
@@ -358,25 +362,26 @@ export default function WorldMap() {
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="border border-[#2a2f52] bg-[#070a18]/80 p-4">
-                  <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">STAR COLLECTIBLES</p>
-                  <p className="pa-pixel mt-3 flex items-center gap-2 text-[10px] text-[#ffd166]">
-                    <Star className="h-4 w-4 fill-[#ffd166]" />
-                    {selectedStars.slice(0, 5).filter(Boolean).length} / 5 FOUND
+                  <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">RESONANCE SHARDS</p>
+                  <p className="pa-pixel mt-3 flex items-center gap-2 text-[10px]" style={{ color: accent }}>
+                    <Gem className="h-4 w-4 fill-current" />
+                    {selectedShards.slice(0, 5).filter(Boolean).length} / 5 FOUND
                   </p>
-                  <div className="mt-3 flex gap-2" aria-label={`${selectedStars.slice(0, 5).filter(Boolean).length} of 5 collectible stars found`}>
+                  <div className="mt-3 flex gap-2" aria-label={`${selectedShards.slice(0, 5).filter(Boolean).length} of 5 resonance shards found`}>
                     {Array.from({ length: 5 }, (_, index) => (
-                      <Star
+                      <Gem
                         key={index}
-                        className={`h-5 w-5 ${selectedStars[index] ? "fill-[#ffd166] text-[#ffd166]" : "text-[#2a2f52]"}`}
+                        className={`h-5 w-5 ${selectedShards[index] ? "fill-current" : "text-[#2a2f52]"}`}
+                        style={selectedShards[index] ? { color: accent } : undefined}
                       />
                     ))}
                   </div>
                 </div>
                 <div className="border border-[#2a2f52] bg-[#070a18]/80 p-4">
                   <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">DEATHLESS CLEAR</p>
-                  <p className={`pa-pixel mt-3 flex items-center gap-2 text-[9px] ${selectedStars[5] ? "text-[#7af6c8]" : "text-[#c6d2f2]/45"}`}>
-                    {selectedStars[5] ? <Check className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-                    {selectedStars[5] ? "SIXTH STAR SECURED" : "CLEAR WITHOUT LOSING A LIFE"}
+                  <p className={`pa-pixel mt-3 flex items-center gap-2 text-[9px] ${selectedShards[5] ? "text-[#7af6c8]" : "text-[#c6d2f2]/45"}`}>
+                    {selectedShards[5] ? <Check className="h-4 w-4" /> : <Gem className="h-4 w-4" />}
+                    {selectedShards[5] ? "FLAWLESS BONUS SECURED" : "CLEAR WITHOUT LOSING A LIFE"}
                   </p>
                   <p className="mt-3 text-xs tracking-wide text-[#c6d2f2]/45">
                     {cleared ? "Stage cleared" : "Not cleared yet"}
@@ -392,9 +397,9 @@ export default function WorldMap() {
               {!unlocked ? (
                 <p className="pa-pixel mt-4 text-[7px] leading-relaxed text-[#ff3d8b]">
                   {level.starOf
-                    ? `LOCKED · FIND ALL SIX STARS ON STAGE ${level.starOf}`
+                    ? `LOCKED · FIND ALL SIX SHARDS ON STAGE ${level.starOf}`
                     : level.secretOf
-                    ? `LOCKED · GET FIVE STARS ON STAGE ${level.secretOf} IN ONE RUN`
+                    ? `LOCKED · GET FIVE SHARDS ON STAGE ${level.secretOf} IN ONE RUN`
                     : `LOCKED · CLEAR STAGE ${String(selected - 1).padStart(2, "0")} FIRST`}
                 </p>
               ) : null}

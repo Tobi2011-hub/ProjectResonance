@@ -52,7 +52,7 @@ src/game/
                  (sections 1–4)
   world.js       image assets, sprite drawing, the stage generator and all
                  canvas rendering (sections 1–4)
-  engine.js      the frame loop that ties everything together: camera, stars,
+  engine.js      the frame loop that ties everything together: camera, shards,
                  lives, checkpoints, boss trigger, win/lose
 ```
 
@@ -61,7 +61,7 @@ The screens are four pages, each with the UI pieces it needs:
 ```
 src/pages/
   Title.jsx      title screen, new game / load / settings / exit
-  WorldMap.jsx   stage select, rifts, star counter, and per-stage progress briefing
+  WorldMap.jsx   stage select, rifts, shard counter, and per-stage progress briefing
   Customize.jsx  character, colours and weapon loadout with save confirmation
   Stage.jsx      stage-entry briefing and the gameplay canvas
 
@@ -87,7 +87,7 @@ inline comment:
 | Dash distance and frequency | `DASH_SPEED`, `DASH_TIME`, `DASH_COOLDOWN` |
 | Wall behaviour | `WALL_SLIDE_SPEED`, `WALL_JUMP_VX`, `WALL_JUMP_VY` |
 | Difficulty | `MAX_HEALTH`, `START_LIVES`, `ENEMY_DAMAGE`, `BOSS_DAMAGE`, `SPIKE_DAMAGE` |
-| Stars | `STARS_COLLECTIBLE`, `STARS_TOTAL` |
+| Resonance shards | `STARS_COLLECTIBLE`, `STARS_TOTAL` (legacy save-compatible names) |
 
 Rule of thumb: higher acceleration and friction = less slippery. Higher gravity
 and lower jump velocity = tighter, heavier platforming.
@@ -96,7 +96,7 @@ and lower jump velocity = tighter, heavier platforming.
 
 **Make a stage longer.** In `world.js`, find the `MAIN` table near the bottom of
 the LEVELS section and raise that stage's `width` (in tiles). More width = more
-ground, more gaps and more room for the generator to place platforms and stars.
+ground, more gaps and more room for the generator to place platforms and shards.
 
 **Make the boss harder.** In `entities.js`, section 4 (BOSS): raise `hp` and
 shorten the timings in `beginAttack()` / `toIdle()`. `BOSS_DAMAGE` in core.js
