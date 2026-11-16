@@ -98,9 +98,13 @@ and lower jump velocity = tighter, heavier platforming.
 the LEVELS section and raise that stage's `width` (in tiles). More width = more
 ground, more gaps and more room for the generator to place platforms and shards.
 
-**Make the boss harder.** In `entities.js`, section 4 (BOSS): raise `hp` and
-shorten the timings in `beginAttack()` / `toIdle()`. `BOSS_DAMAGE` in core.js
-controls how much a touch costs the player.
+**Make the boss harder.** In `entities.js`, section 4 (BOSS): raise
+`phaseOneMaxHp` or the Phase 2 multiplier in `startPhaseTwo()`, and shorten
+the timings in `beginAttack()` / `toIdle()`. Level 10 starts when the player
+drops into the arena; its Phase 2 adds moving spike platforms and an exoshield
+that stays active until its spawned enemies are defeated. The Grand Gem appears
+after the boss is defeated. `BOSS_DAMAGE` in core.js controls how much a touch
+costs the player.
 
 **Change the dialogue.** `TUTORIALS` at the top of the LEVELS section in
 `world.js`. The `{JUMP}`, `{FIRE}`, `{DASH}` and `{SWAP}` placeholders are

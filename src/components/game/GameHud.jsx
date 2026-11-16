@@ -50,19 +50,36 @@ export default function GameHud({ hud, onReload }) {
                   ))}
                 </div>
                 <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <Gem
-                      key={i}
-                      className="h-3.5 w-3.5"
-                      style={{
-                        color: i < hud.shards ? hud.accent : "rgba(255,255,255,0.2)",
-                        fill: i < hud.shards ? hud.accent : "transparent",
-                      }}
-                    />
-                  ))}
-                  <span className="pa-pixel ml-1 text-[7px]" style={{ color: hud.accent }}>
-                    {hud.collected}/5 SHARDS
-                  </span>
+                  {hud.stage === 10 ? (
+                    <>
+                      <Gem
+                        className="h-3.5 w-3.5"
+                        style={{
+                          color: hud.collected ? "#ffd166" : "rgba(255,255,255,0.2)",
+                          fill: hud.collected ? "#ffd166" : "transparent",
+                        }}
+                      />
+                      <span className="pa-pixel ml-1 text-[7px] text-[#ffd166]">
+                        {hud.collected}/1 GRAND GEM
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <Gem
+                          key={i}
+                          className="h-3.5 w-3.5"
+                          style={{
+                            color: i < hud.shards ? hud.accent : "rgba(255,255,255,0.2)",
+                            fill: i < hud.shards ? hud.accent : "transparent",
+                          }}
+                        />
+                      ))}
+                      <span className="pa-pixel ml-1 text-[7px]" style={{ color: hud.accent }}>
+                        {hud.collected}/{hud.totalShards} SHARDS
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -100,6 +117,11 @@ export default function GameHud({ hud, onReload }) {
                     {hud.bossPhase === 2 ? (
                       <span className="border border-[#ff9f45]/60 bg-[#ff9f45]/15 px-1 text-[7px] text-[#ff9f45]">PHASE 2</span>
                     ) : null}
+                    {hud.bossShielded ? (
+                      <span className="border border-[#4be3ff]/60 bg-[#4be3ff]/15 px-1 text-[7px] text-[#4be3ff]">
+                        SHIELDED
+                      </span>
+                    ) : null}
                   </span>
                   <span className="pa-pixel text-[8px] text-[#c6d2f2]/50">{Math.ceil(bossPct * 100)}%</span>
                 </div>
@@ -113,7 +135,6 @@ export default function GameHud({ hud, onReload }) {
               </div>
             ) : null}
           </div>
-
           <div className="flex flex-1 flex-col items-end sm:max-w-[120px]">
             <div className="flex items-center gap-1.5">
               <Zap className={`h-3.5 w-3.5 ${hud.dashReady ? "text-[#4be3ff]" : "text-white/20"}`} />
@@ -142,6 +163,14 @@ export default function GameHud({ hud, onReload }) {
           </div>
         </div>
       </div>
+
+      {hud.phaseAlert ? (
+        <div className="absolute inset-x-0 top-[42%] flex justify-center">
+          <div className="pa-pixel border-y-2 border-[#ff9f45] bg-[#090b16]/90 px-8 py-3 text-center text-sm tracking-[0.3em] text-[#ffbf75] shadow-[0_0_40px_#ff9f4555] sm:px-14 sm:py-4 sm:text-xl">
+            PHASE 2
+          </div>
+        </div>
+      ) : null}
 
       <button
         type="button"

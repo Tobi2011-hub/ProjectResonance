@@ -107,7 +107,7 @@ export default class GameEngine {
     });
 
     const starState = save.stars?.[level.id] || [];
-    this.stars = Array.from({ length: 6 }, (_, i) => Boolean(starState[i]));
+    this.stars = Array.from({ length: 6 }, (_, i) => Boolean(starState[i]) && (level.id !== 10 || i === 0));
     this.runShards = [false, false, false, false, false];
     this.shardEntities = level.stars.map(([x, y], i) => ({
       x: x * TILE + 8,
@@ -116,6 +116,10 @@ export default class GameEngine {
       taken: false,
       bob: i * 1.7,
     }));
+    const grandGemPosition = level.boss?.grandGem;
+    this.grandGem = grandGemPosition
+      ? { x: grandGemPosition[0] * TILE + 8, y: grandGemPosition[1] * TILE + 8, visible: false, taken: false }
+      : null;
 
     this.coinEntities = (level.coins || []).map(([x, y], i) => ({
       x: x * TILE + 8,
@@ -193,6 +197,9 @@ export default class GameEngine {
     this.boss = level.boss ? new Boss(level.boss.x, level.boss.y, { minX: level.door.x, maxX: level.width }) : null;
     this.bossTriggered = false;
     this.bossDefeated = false;
+    this.bossShieldAdds = [];
+    this.phaseAlertTimer = 0;
+    this.bossPlatforms = [];
     this.doorProgress = 0;
     this.cutsceneTimer = 0;
     this.controlLocked = false;
@@ -283,6 +290,7 @@ export default class GameEngine {
     this.time += dt;
     if (this.hudTimer > 0) this.hudTimer -= dt;
     if (this.ammoFlash > 0) this.ammoFlash -= dt;
+    if (this.phaseAlertTimer > 0) this.phaseAlertTimer = Math.max(0, this.phaseAlertTimer - dt);
 
     if (this.narrativeOpen) {
       if (this.input.wasPressed("enter") || this.input.wasPressed("jump")) {
@@ -334,7 +342,7 @@ export default class GameEngine {
       return;
     }
 
-    this.updateMovers();
+    this.updateMovers(dt);
     this.updateTraps(dt);
 
     if (this.cutsceneTimer > 0) {
@@ -366,16 +374,27 @@ export default class GameEngine {
     this.input.endFrame();
   }
 
-  updateMovers() {
+  updateMovers(dt) {
     this.world.clearDynamics();
     this.movers.forEach((mover) => {
       const prevX = mover.x;
       const prevY = mover.y;
-      const cycle = Math.max(1, mover.range * 2);
-      const travel = (this.time * mover.speed + mover.phase * mover.range) % cycle;
-      const forward = travel <= mover.range ? travel : cycle - travel;
-      if (mover.axis === "x") mover.x = mover.baseX + forward;
-      else mover.y = mover.baseY + forward;
+      if (mover.bossHazard) {
+        const offset = Math.sin(this.time * mover.speed + mover.phase) * mover.range;
+        if (mover.axis === "x") mover.x = mover.baseX + offset;
+        else mover.y = mover.baseY + offset;
+        mover.spikeTimer -= dt;
+        if (mover.spikeTimer <= 0) {
+          mover.spikeActive = !mover.spikeActive;
+          mover.spikeTimer = mover.spikeActive ? 1.1 : 1.8;
+        }
+      } else {
+        const cycle = Math.max(1, mover.range * 2);
+        const travel = (this.time * mover.speed + mover.phase * mover.range) % cycle;
+        const forward = travel <= mover.range ? travel : cycle - travel;
+        if (mover.axis === "x") mover.x = mover.baseX + forward;
+        else mover.y = mover.baseY + forward;
+      }
       mover.dx = mover.x - prevX;
       mover.dy = mover.y - prevY;
       this.world.addDynamic({ x: mover.x, y: mover.y, w: mover.w, h: mover.h });
@@ -524,6 +543,13 @@ export default class GameEngine {
       this.doorProgress = Math.max(0, this.doorProgress - dt * 1.6);
     }
     this.boss.update(dt, this.player, this);
+    if (this.boss.exoshield && this.bossShieldAdds.every((enemy) => !enemy.alive)) {
+      this.boss.breakExoshield();
+      this.bossShieldAdds = [];
+      ring(this.effects, this.boss.x + this.boss.w / 2, this.boss.y + this.boss.h / 2, 58, "#4be3ff", 0.45);
+      addFlash(this.effects, this.boss.x + this.boss.w / 2, this.boss.y + this.boss.h / 2, 46, "#4be3ff");
+      this.pushHud(true);
+    }
     if (this.boss.state === "dead" && !this.bossDefeated) this.onBossDefeated();
   }
 
@@ -615,8 +641,9 @@ export default class GameEngine {
         }
       }
       if (alive && this.boss && this.boss.active && !(bullet.kind === "boomerang" && bullet.bossHit) && overlaps(rect, this.boss)) {
-        const killed = this.boss.damage(bullet.damage);
-        this.hitBoss(bullet.x, bullet.y);
+        const wasVulnerable = this.boss.vulnerable;
+        const killed = this.boss.damage(bullet.damage, this);
+        if (wasVulnerable) this.hitBoss(bullet.x, bullet.y);
         if (bullet.kind === "boomerang") bullet.bossHit = true;
         if (killed) this.onBossDefeated();
         if (!bullet.pierce) alive = false;
@@ -686,9 +713,12 @@ export default class GameEngine {
       }
     });
     if (this.boss && this.boss.active && overlaps(rect, this.boss)) {
-      this.boss.damage(amount);
-      this.hitBoss(fromX, fromY);
-      hitAny = true;
+      const wasVulnerable = this.boss.vulnerable;
+      this.boss.damage(amount, this);
+      if (wasVulnerable) {
+        this.hitBoss(fromX, fromY);
+        hitAny = true;
+      }
     }
     return hitAny;
   }
@@ -833,8 +863,11 @@ export default class GameEngine {
 
     if (this.player.invuln <= 0) {
       const hitBySpike = this.spikes.some((spike) => overlaps(spike, this.player));
+      const hitByBossSpike = this.bossPlatforms.some(
+        (mover) => mover.spikeActive && overlaps({ x: mover.x, y: mover.y - 12, w: mover.w, h: 12 }, this.player)
+      );
       const hitByTrap = this.traps.some((trap) => trap.active && overlaps(trap, this.player));
-      if (hitBySpike || hitByTrap) this.hurtBySpike();
+      if (hitBySpike || hitByBossSpike || hitByTrap) this.hurtBySpike();
     }
 
     this.saws.forEach((saw) => {
@@ -854,8 +887,30 @@ export default class GameEngine {
       if (overlaps(exitRect, this.player)) this.finishStage();
     }
 
-    if (this.level.boss && !this.bossTriggered && this.player.centerX > this.level.boss.triggerX * TILE) {
+    if (
+      this.level.boss &&
+      !this.bossTriggered &&
+      this.player.vy > 0 &&
+      this.player.centerY >= this.level.boss.triggerY * TILE &&
+      this.player.centerX >= this.level.boss.dropMinX * TILE &&
+      this.player.centerX <= this.level.boss.dropMaxX * TILE
+    ) {
       this.triggerBoss();
+    }
+
+    if (this.grandGem?.visible && !this.grandGem.taken) {
+      this.attractPickup(this.grandGem, dt);
+      if (overlaps({ x: this.grandGem.x - 13, y: this.grandGem.y - 13, w: 26, h: 26 }, this.player)) {
+        this.grandGem.taken = true;
+        this.runShards[0] = true;
+        this.stars[0] = true;
+        sfx("star");
+        burst(this.effects, this.grandGem.x, this.grandGem.y, { count: 28, color: "#ffd166", speed: 170, life: 0.7 });
+        ring(this.effects, this.grandGem.x, this.grandGem.y, 36, "#ffd166", 0.45);
+        addFlash(this.effects, this.grandGem.x, this.grandGem.y, 30, "#ffd166");
+        this.hooks.onStar(0, [...this.stars]);
+        this.pushHud(true);
+      }
     }
   }
 
@@ -906,13 +961,14 @@ export default class GameEngine {
 
   triggerBoss() {
     this.bossTriggered = true;
-    this.controlLocked = true;
-    this.cutsceneTimer = 1.1;
+    this.controlLocked = false;
+    this.cutsceneTimer = 0;
     this.world.closeDoor();
     this.doorProgress = 0.02;
     this.camera.locked = true;
     this.camera.target = clamp(this.level.boss.cameraX, 0, this.level.width * TILE - VIEW_W);
     this.player.vx = 0;
+    this.boss.activate(true);
     sfx("door");
     shake(this.effects, 7);
     this.pushHud(true);
@@ -921,6 +977,7 @@ export default class GameEngine {
   onBossDefeated() {
     if (this.bossDefeated) return;
     this.bossDefeated = true;
+    if (this.grandGem) this.grandGem.visible = true;
     this.exitActive = true;
     this.world.openDoor();
     this.camera.locked = false;
@@ -938,6 +995,8 @@ export default class GameEngine {
 
   // --- phase two helpers ---------------------------------------------------
   bossPhaseTwo(boss) {
+    this.phaseAlertTimer = 2.4;
+    this.spawnBossPlatforms();
     sfx("door");
     shake(this.effects, 14);
     this.hitstop = Math.max(this.hitstop, 0.18);
@@ -948,6 +1007,45 @@ export default class GameEngine {
       speed: 240,
       life: 0.9,
     });
+    this.pushHud(true);
+  }
+
+  spawnBossPlatforms() {
+    if (this.bossPlatforms.length) return;
+    const platformHeight = this.boss.h / 2;
+    this.bossPlatforms = [
+      { x: 17, y: 8, axis: "x", range: 2.5, speed: 0.85, phase: 0, spikeTimer: 1.2 },
+      { x: 35, y: 8, axis: "y", range: 2, speed: 1.05, phase: Math.PI / 2, spikeTimer: 2.4 },
+    ].map((config) => ({
+      baseX: config.x * TILE,
+      baseY: config.y * TILE,
+      x: config.x * TILE,
+      y: config.y * TILE,
+      w: this.boss.w,
+      h: platformHeight,
+      axis: config.axis,
+      range: config.range * TILE,
+      speed: config.speed,
+      phase: config.phase,
+      bossHazard: true,
+      spikeTimer: config.spikeTimer,
+      spikeActive: false,
+      dx: 0,
+      dy: 0,
+    }));
+    this.movers.push(...this.bossPlatforms);
+  }
+
+  activateBossShield() {
+    if (!this.boss) return;
+    const minX = this.level.door.x + 1;
+    const maxX = this.level.width - 1;
+    const left = clamp(Math.floor(this.boss.x / TILE) - 3, minX, maxX - 2);
+    const right = clamp(Math.floor((this.boss.x + this.boss.w) / TILE) + 2, minX, maxX - 2);
+    this.bossShieldAdds = [left, right].map((tx) =>
+      new Enemy(tx, 15, minX, maxX, "standard")
+    );
+    this.enemies.push(...this.bossShieldAdds);
     this.pushHud(true);
   }
 
@@ -1077,7 +1175,7 @@ export default class GameEngine {
       maxHealth: this.player.maxHealth,
       shards: this.stars.filter(Boolean).length,
       collected: this.runShards.filter(Boolean).length,
-      totalShards: 6,
+      totalShards: this.level.id === 10 ? 1 : 5,
       accent: this.level.accent,
       lives: this.lives,
       deaths: this.deaths,
@@ -1101,6 +1199,9 @@ export default class GameEngine {
       bossHp: this.boss ? this.boss.hp : 0,
       bossMax: this.boss ? this.boss.maxHp : 1,
       bossPhase: this.boss?.phaseTwo ? 2 : 1,
+      bossShielded: Boolean(this.boss?.exoshield),
+      bossTransitioning: Boolean(this.boss?.state === "phase-transition"),
+      phaseAlert: this.phaseAlertTimer > 0,
       abilities: Object.keys(this.abilities).filter((key) => this.abilities[key]),
     };
   }
@@ -1125,6 +1226,10 @@ export default class GameEngine {
       hud.respawning,
       hud.bossVisible,
       hud.bossPhase,
+      hud.bossShielded,
+      hud.bossTransitioning,
+      hud.phaseAlert,
+      Math.ceil(this.phaseAlertTimer * 10),
     ].join("|");
     if (!force && key === this.hudKey) return;
     this.hudKey = key;

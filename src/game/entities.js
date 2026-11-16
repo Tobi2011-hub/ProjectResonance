@@ -899,6 +899,7 @@ export class Boss {
     this.groundY = groundRow * TILE;
     this.hp = Math.round(1800 * ENEMY_HEALTH_MULTIPLIER);
     this.maxHp = this.hp;
+    this.phaseOneMaxHp = this.maxHp;
     this.defense = 0.28;
     this.state = "dormant";
     this.next = null;
@@ -913,28 +914,37 @@ export class Boss {
     this.spreadStage = 0;
     this.introTimer = 0;
     this.phaseTwo = false;
+    this.phaseTransitionTime = 0;
+    this.phaseTransitionDuration = 2.2;
+    this.invulnerable = false;
+    this.exoshield = false;
+    this.shieldCooldown = 5.2;
     this.rainTick = 0;
     this.sweepShots = 0;
     this.tpDone = false;
   }
 
-  /** Phase 2 begins at half health. */
   get phase() {
-    return this.hp <= this.maxHp * 0.5 ? 2 : 1;
+    return this.phaseTwo ? 2 : 1;
   }
 
   get alive() {
-    return this.state !== "dead" && this.hp > 0;
+    return this.state !== "dead";
+  }
+
+  get vulnerable() {
+    return this.active && !this.invulnerable && !this.exoshield && this.state !== "phase-transition";
   }
 
   get active() {
     return !["dormant", "intro", "dead"].includes(this.state);
   }
 
-  activate() {
+  activate(immediate = false) {
     if (this.state !== "dormant") return;
-    this.state = "intro";
-    this.introTimer = 0.8;
+    this.state = immediate ? "idle" : "intro";
+    this.introTimer = immediate ? 0 : 0.8;
+    if (immediate) this.timer = 0.35;
     sfx("door");
   }
 
@@ -963,16 +973,26 @@ export class Boss {
       return;
     }
 
-    // --- PHASE TWO: half health, new palette of attacks ---------------------
-    if (!this.phaseTwo && this.hp <= this.maxHp * 0.5) {
-      this.phaseTwo = true;
-      this.defense = 0.18;
-      this.state = "idle";
-      this.timer = 1.1;
-      this.vx = 0;
-      this.history = [];
-      engine?.bossPhaseTwo?.(this);
+    if (this.state === "phase-transition") {
+      this.phaseTransitionTime += dt;
+      const progress = clamp(this.phaseTransitionTime / this.phaseTransitionDuration, 0, 1);
+      const eased = progress * progress * (3 - 2 * progress);
+      this.hp = this.maxHp * eased;
+      if (progress >= 1) {
+        this.hp = this.maxHp;
+        this.invulnerable = false;
+        this.state = "idle";
+        this.timer = 1.1;
+      }
       return;
+    }
+
+    if (this.phaseTwo && !this.exoshield) {
+      this.shieldCooldown -= dt;
+      if (this.shieldCooldown <= 0) {
+        this.exoshield = true;
+        engine?.activateBossShield?.(this);
+      }
     }
 
     const dirToPlayer = Math.sign(player.centerX - (this.x + this.w / 2)) || 1;
@@ -1129,12 +1149,40 @@ export class Boss {
     this.vx = 0;
   }
 
-  damage(amount) {
-    if (!this.active || this.state === "dead") return false;
+  startPhaseTwo(engine) {
+    if (this.phaseTwo) return;
+    this.phaseTwo = true;
+    this.defense = 0.18;
+    this.maxHp = Math.round(this.phaseOneMaxHp * 2.25);
+    this.hp = 0;
+    this.invulnerable = true;
+    this.exoshield = false;
+    this.shieldCooldown = 5.2;
+    this.phaseTransitionTime = 0;
+    this.state = "phase-transition";
+    this.timer = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.history = [];
+    engine?.bossPhaseTwo?.(this);
+  }
+
+  breakExoshield() {
+    if (!this.exoshield) return;
+    this.exoshield = false;
+    this.shieldCooldown = 5.2;
+  }
+
+  damage(amount, engine) {
+    if (!this.vulnerable) return false;
     const dealt = Math.max(1, amount * (1 - this.defense));
     this.hp = Math.max(0, this.hp - dealt);
     this.flash = 0.14;
     if (this.hp <= 0) {
+      if (!this.phaseTwo) {
+        this.startPhaseTwo(engine);
+        return false;
+      }
       this.state = "dead";
       return true;
     }

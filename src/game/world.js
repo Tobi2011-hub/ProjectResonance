@@ -541,20 +541,19 @@ const BOSS_STAGE = {
   name: "Void Core",
   theme: "gray",
   width: 48,
-  boss: true,
   accent: STAGE_ACCENTS[10],
-  spawn: [2, 15],
-  platforms: [[0, 15, 48, 2], [3, 9, 4, 1], [41, 9, 4, 1], [18, 5, 6, 1], [9, 12, 3, 1], [36, 12, 3, 1]],
+  spawn: [24, 2],
+  platforms: [[0, 15, 48, 2], [3, 9, 4, 1], [41, 9, 4, 1], [9, 12, 3, 1], [36, 12, 3, 1]],
   movers: [],
   trapSpikes: [],
   spikes: [],
   saws: [],
   enemies: [],
-  stars: [[5, 7], [42, 7], [20, 3], [10, 10], [37, 10]],
+  stars: [],
   checkpoints: [[4, 15]],
   exit: [45, 15],
   door: { x: 13, y: 8, h: 7 },
-  boss: { x: 32, y: 15, triggerX: 14, cameraX: 100 },
+  boss: { x: 32, y: 15, triggerY: 9, dropMinX: 18, dropMaxX: 30, cameraX: 100, grandGem: [32, 14] },
   tutorials: [{ x: 3, y: 10, w: 3, h: 4, ...TUTORIALS[10][0] }],
   secretOf: null,
   ability: null,
@@ -1032,7 +1031,7 @@ function drawSpikeStrip(ctx, x, baseY, w, alpha, color) {
 }
 
 export function drawHazards(ctx, engine) {
-  const { camera, spikes, saws, time, traps } = engine;
+  const { camera, spikes, saws, time, traps, movers } = engine;
   const pal = palette(engine.level.theme);
 
   spikes.forEach((spike) => {
@@ -1053,6 +1052,10 @@ export function drawHazards(ctx, engine) {
       const blink = warn && Math.floor(time * 12) % 2 === 0;
       drawSpikeStrip(ctx, x, baseY, trap.w, rising * (blink ? 0.55 : 1), blink ? "#ffd166" : pal.accent === "#ffd166" ? "#ff9f45" : "#ff6b6b");
     }
+  });
+
+  movers.filter((mover) => mover.bossHazard && mover.spikeActive).forEach((mover) => {
+    drawSpikeStrip(ctx, mover.x - camera.x, mover.y, mover.w, 1, "#ff9f45");
   });
 
   saws.forEach((saw) => {
@@ -1096,7 +1099,7 @@ function drawShardShape(ctx, cx, cy, size) {
 }
 
 export function drawShards(ctx, engine) {
-  const { camera, time, shardEntities, level } = engine;
+  const { camera, time, shardEntities, level, grandGem } = engine;
   const accent = level.accent || "#4be3ff";
   shardEntities.forEach((shard) => {
     if (shard.taken) return;
@@ -1127,6 +1130,30 @@ export function drawShards(ctx, engine) {
     ctx.fill();
     ctx.restore();
   });
+
+  if (grandGem?.visible && !grandGem.taken) {
+    const cx = Math.round(grandGem.x - camera.x);
+    const cy = Math.round(grandGem.y + Math.sin(time * 3) * 3);
+    ctx.save();
+    ctx.shadowColor = "#ffd166";
+    ctx.shadowBlur = 24;
+    drawShardShape(ctx, cx, cy, 15);
+    ctx.fillStyle = "#fff6c9";
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    drawShardShape(ctx, cx, cy, 10);
+    ctx.fillStyle = "#ffd166";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx + 3, cy);
+    ctx.lineTo(cx, cy + 8);
+    ctx.lineTo(cx - 3, cy);
+    ctx.closePath();
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 export function drawItems(ctx, engine) {
@@ -1326,7 +1353,35 @@ export function drawBoss(ctx, engine) {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(dx + 10, dy + 10, size - 20, size - 20);
   }
+  if (boss.exoshield) {
+    ctx.globalAlpha = 0.65 + Math.sin(time * 9) * 0.2;
+    ctx.strokeStyle = "#4be3ff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(dx + size / 2, dy + size / 2, size * 0.6, size * 0.67, time * 0.35, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
+
+  if (boss.active) {
+    const barWidth = 76;
+    const barX = Math.round(boss.x + boss.w / 2 - barWidth / 2 - camera.x);
+    const barY = dy - 9;
+    const health = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
+    ctx.save();
+    ctx.fillStyle = "#05060d";
+    ctx.fillRect(barX - 2, barY - 2, barWidth + 4, 8);
+    ctx.fillStyle = "#242a48";
+    ctx.fillRect(barX, barY, barWidth, 4);
+    ctx.fillStyle = boss.phaseTwo ? "#ff9f45" : "#ff3d8b";
+    ctx.fillRect(barX, barY, Math.round(barWidth * health), 4);
+    if (boss.exoshield) {
+      ctx.strokeStyle = "#4be3ff";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(barX - 1, barY - 1, barWidth + 2, 6);
+    }
+    ctx.restore();
+  }
 }
 
 export function drawPlayer(ctx, engine) {

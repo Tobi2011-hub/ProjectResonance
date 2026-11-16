@@ -102,7 +102,9 @@ export default function Stage() {
             <div className="mx-auto mt-7 flex max-w-sm items-center justify-center gap-3 border-y border-[#2a2f52] py-4">
               <Gem className="h-4 w-4 shrink-0" style={{ color: level.accent }} />
               <p className="pa-pixel text-[7px] leading-relaxed text-[#c6d2f2]/65">
-                FIND FIVE SHARDS · CLEAR FLAWLESSLY FOR THE BONUS
+                {level.id === 10
+                  ? "DEFEAT THE VOID CORE · CLAIM THE GRAND GEM"
+                  : "FIND FIVE SHARDS · CLEAR FLAWLESSLY FOR THE BONUS"}
               </p>
             </div>
             <button

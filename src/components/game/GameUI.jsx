@@ -112,11 +112,17 @@ export function ClearOverlay({
             STAGE {String(level.id).padStart(2, "0")} <span className="text-white/25">/</span> {level.name}
           </p>
 
-          <ShardReveal shards={shards} noDeath={noDeath} accent={accent} />
+          <ShardReveal
+            shards={shards}
+            noDeath={noDeath}
+            accent={accent}
+            totalShards={level.id === 10 ? 1 : 5}
+            shardLabel={level.id === 10 ? "GRAND GEM" : "SHARDS"}
+          />
 
           <div className="mx-auto mt-6 grid max-w-xl grid-cols-3 gap-2 sm:gap-3">
             {[
-              { label: "SHARDS", value: `${collected} / 5`, icon: Gem },
+              { label: level.id === 10 ? "GRAND GEM" : "SHARDS", value: `${collected} / ${level.id === 10 ? 1 : 5}`, icon: Gem },
               { label: "LIVES LEFT", value: String(lives), icon: Heart },
               { label: "ORB REWARD", value: `+${orbGain}`, icon: Sparkles },
             ].map(({ label, value, icon: Icon }) => (
