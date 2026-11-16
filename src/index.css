@@ -459,6 +459,20 @@ canvas.pa-canvas {
 }
 
 @media (orientation: landscape) and (pointer: coarse), (orientation: landscape) and (hover: none) {
+  .pa-game-root {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  .pa-game-shell {
+    width: 100%;
+    max-width: none;
+  }
+
+  .pa-game-stage {
+    width: min(100vw, calc(100dvh * 1.7647)) !important;
+  }
+
   .pa-touch-fullscreen {
     top: auto;
     right: auto;

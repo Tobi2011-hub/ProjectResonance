@@ -433,7 +433,7 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
             type="button"
             onClick={toggleGameFullscreen}
             aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="pa-touch-only pa-touch-fullscreen absolute left-2 top-16 z-30 grid h-10 w-10 place-items-center border border-white/20 bg-[#0a0d1c]/70 text-white/70 backdrop-blur-sm"
+            className="pa-touch-only pa-touch-fullscreen absolute left-2 top-16 z-30 grid h-11 w-11 place-items-center border border-white/25 bg-[#0a0d1c]/80 text-white/85 backdrop-blur-sm"
           >
             {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
@@ -442,7 +442,7 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
             type="button"
             onClick={() => togglePause()}
             aria-label="Pause"
-            className="pa-touch-only absolute right-2 top-28 z-30 grid h-10 w-10 place-items-center border border-white/20 bg-[#0a0d1c]/70 text-white/70 backdrop-blur-sm"
+            className="pa-touch-only absolute right-2 top-28 z-30 grid h-11 w-11 place-items-center border border-white/25 bg-[#0a0d1c]/80 text-white/85 backdrop-blur-sm"
           >
             <Pause className="h-4 w-4" />
           </button>

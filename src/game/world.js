@@ -536,13 +536,9 @@ const SECRETS = [
   { id: 18, name: "Vault: Resonance Deep", theme: "cyan", width: 480, seed: 1818, hard: 0.84, starOf: 6, reward: "ORBS" },
 ];
 
-const BOSS_STAGE = {
-  id: 10,
-  name: "Void Core",
-  theme: "gray",
+const BOSS_ARENA_OFFSET = 260;
+const BOSS_ARENA = {
   width: 45,
-  accent: STAGE_ACCENTS[10],
-  spawn: [2, 15],
   platforms: [
     [0, 15, 5, 2],
     [6, 13, 3, 1],
@@ -560,12 +556,6 @@ const BOSS_STAGE = {
     [35, 9, 3, 1],
     [38, 7, 3, 1],
   ],
-  movers: [],
-  trapSpikes: [],
-  spikes: [],
-  saws: [],
-  enemies: [],
-  stars: [],
   checkpoints: [[21, 7]],
   exit: [41, 15],
   boss: {
@@ -583,11 +573,82 @@ const BOSS_STAGE = {
     collisionPlatforms: [[14, 15, 29, 2]],
     grandGem: [29, 14],
   },
-  tutorials: [],
-  secretOf: null,
-  ability: null,
-  reward: null,
 };
+
+const BOSS_STAGE = (() => {
+  const approach = buildStage({
+    id: 10,
+    name: "Void Core",
+    theme: "gray",
+    width: BOSS_ARENA_OFFSET,
+    seed: 1010,
+    hard: 0.72,
+  });
+  const midpointGround = approach.platforms
+    .filter(([x, , width, height = 1]) => height > 1 && width >= 4 && x < BOSS_ARENA_OFFSET - 8)
+    .sort(
+      (a, b) =>
+        Math.abs(a[0] + a[2] / 2 - BOSS_ARENA_OFFSET / 2) -
+        Math.abs(b[0] + b[2] / 2 - BOSS_ARENA_OFFSET / 2)
+    )[0];
+  const midpointCheckpoint = midpointGround
+    ? [
+        clampInt(Math.floor(BOSS_ARENA_OFFSET / 2), midpointGround[0] + 1, midpointGround[0] + midpointGround[2] - 2),
+        midpointGround[1],
+      ]
+    : null;
+  const routeCheckpoints = approach.checkpoints.filter(([x]) => x < BOSS_ARENA_OFFSET - 12);
+  if (
+    midpointCheckpoint &&
+    !routeCheckpoints.some(([x]) => Math.abs(x - midpointCheckpoint[0]) < 8)
+  ) {
+    routeCheckpoints.push(midpointCheckpoint);
+  }
+  routeCheckpoints.sort((a, b) => a[0] - b[0]);
+
+  const arenaX = (x) => x + BOSS_ARENA_OFFSET;
+  const arenaPoint = ([x, y]) => [arenaX(x), y];
+  const arenaBoss = {
+    ...BOSS_ARENA.boss,
+    x: arenaX(BOSS_ARENA.boss.x),
+    minX: arenaX(BOSS_ARENA.boss.minX),
+    maxX: arenaX(BOSS_ARENA.boss.maxX),
+    arenaMinX: arenaX(BOSS_ARENA.boss.arenaMinX),
+    arenaMaxX: arenaX(BOSS_ARENA.boss.arenaMaxX),
+    dropMinX: arenaX(BOSS_ARENA.boss.dropMinX),
+    dropMaxX: arenaX(BOSS_ARENA.boss.dropMaxX),
+    cameraX: BOSS_ARENA.boss.cameraX + BOSS_ARENA_OFFSET * TILE,
+    collisionPlatforms: BOSS_ARENA.boss.collisionPlatforms.map(([x, y, width, height]) => [
+      arenaX(x),
+      y,
+      width,
+      height,
+    ]),
+    grandGem: arenaPoint(BOSS_ARENA.boss.grandGem),
+  };
+
+  return {
+    ...approach,
+    width: BOSS_ARENA_OFFSET + BOSS_ARENA.width,
+    accent: STAGE_ACCENTS[10],
+    platforms: [
+      ...approach.platforms,
+      ...BOSS_ARENA.platforms.map(([x, y, width, height]) => [arenaX(x), y, width, height]),
+    ],
+    enemies: approach.enemies.slice(0, 5).map((enemy) => ({ ...enemy, variant: "standard" })),
+    stars: [],
+    coins: [],
+    challenge: false,
+    checkpoints: [...routeCheckpoints, ...BOSS_ARENA.checkpoints.map(arenaPoint)],
+    exit: arenaPoint(BOSS_ARENA.exit),
+    tutorials: [],
+    boss: arenaBoss,
+    secretOf: null,
+    starOf: null,
+    ability: null,
+    reward: null,
+  };
+})();
 
 export const LEVELS = [...MAIN.map(buildStage), BOSS_STAGE, ...SECRETS.map(buildStage)];
 

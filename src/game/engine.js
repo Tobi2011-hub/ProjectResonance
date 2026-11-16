@@ -1052,13 +1052,14 @@ export default class GameEngine {
 
   spawnBossPlatforms() {
     if (this.bossPlatforms.length) return;
+    const arenaOffset = this.level.boss.arenaMinX - 14;
     this.bossPlatforms = [
       { x: 20, y: 12, axis: "x", range: 2, speed: 0.8, phase: 0, spikeTimer: 1.2 },
       { x: 31, y: 8, axis: "y", range: 1, speed: 1, phase: Math.PI / 2, spikeTimer: 2.4 },
     ].map((config) => ({
-      baseX: config.x * TILE,
+      baseX: (config.x + arenaOffset) * TILE,
       baseY: config.y * TILE,
-      x: config.x * TILE,
+      x: (config.x + arenaOffset) * TILE,
       y: config.y * TILE,
       w: TILE * 3,
       h: 10,
