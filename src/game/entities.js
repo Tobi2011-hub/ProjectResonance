@@ -429,7 +429,7 @@ export class Player {
     this.animTime = 0;
     this.character = character;
     this.armor = armor;
-    this.abilities = abilities || {};
+    this.abilities = { ...abilities };
     this.maxExtraJumps = Number(this.abilities.leap) >= 2 ? 2 : 1;
     this.extraJumps = this.maxExtraJumps;
     this.dashVertical = 0;
@@ -454,6 +454,10 @@ export class Player {
 
   get centerY() {
     return this.y + this.h / 2;
+  }
+
+  abilityRank(id) {
+    return Number(this.abilities[id]) || 0;
   }
 
   probeWalls(world) {
@@ -591,7 +595,8 @@ export class Player {
     this.gliding = false;
     if (!this.onGround && this.dashTime <= 0 && this.vy > 0) {
       if (this.wallDir !== 0 && moveDir === this.wallDir) {
-        this.vy = Math.min(this.vy, WALL_SLIDE_SPEED);
+        const wallClingRank = this.abilityRank("wallcling");
+        this.vy = Math.min(this.vy, wallClingRank >= 2 ? 0 : wallClingRank ? WALL_SLIDE_SPEED * 0.35 : WALL_SLIDE_SPEED);
         this.wallSliding = true;
       } else if (this.abilities.glide && jumpHeld && this.vy > (Number(this.abilities.glide) >= 2 ? 8 : GLIDE_SPEED)) {
         this.glideTime += dt;

@@ -67,8 +67,8 @@ export default function Shop() {
             <PixelFontText text="ORB EXCHANGE" className="text-[14px] text-white sm:text-[16px]" spacing={0.04} />
           </div>
           <p className="mt-2 text-sm tracking-wide text-[#c6d2f2]/55">
-            Orbs drop from every stage you clear. Unlock the fourth frame and five armour palettes, then equip them on
-            the Loadout screen.
+            Orbs drop from every stage you clear. Character unlocks are shared across save slots and last until you
+            delete the save that bought them. Armour palettes remain tied to each save.
           </p>
           {notice ? <PixelFontText text={notice} className="mt-3 text-[8px] text-[#ffd166]" spacing={0.04} /> : null}
 

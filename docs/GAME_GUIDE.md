@@ -110,6 +110,15 @@ replaced with the player's current keys — keep the braces.
 `SECRET_STAGES` and `SECRET_ABILITIES`, and an ability to `ABILITIES`. Then add
 its level config to `SECRETS` in `world.js`.
 
+Each character's `startingAbility` in `CHARACTERS` is granted to the save when
+the character is selected. All saved abilities are passed to the player. When
+a rift reward is already owned, its rank increases and the clear reward also
+grants the new `wallcling` ability if it has not been acquired yet.
+
+Character purchases are shared across save slots: the save that bought each
+character records the unlock, and removing that save removes its unlock unless
+another save also owns the character.
+
 **Change stage colours.** `PALETTES` in `world.js`, section 4 (RENDER) — sky,
 floor top/mid/deep, line and accent per theme.
 

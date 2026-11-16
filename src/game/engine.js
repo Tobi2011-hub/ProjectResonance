@@ -11,7 +11,6 @@
  */
 import {
   CHARACTERS,
-  CHARACTER_SKILLS,
   Input,
   MAX_HEALTH,
   SPIKE_DAMAGE,
@@ -74,9 +73,10 @@ export default class GameEngine {
 
     this.world = createWorld(level);
     this.character = CHARACTERS[save.character] && isCharacterOwned(save, save.character) ? CHARACTERS[save.character] : CHARACTERS[0];
-    const skillId = CHARACTER_SKILLS[save.character];
-    const skillRank = Number(save.abilities?.[skillId]) || 0;
-    this.abilities = skillId && skillRank > 0 ? { [skillId]: skillRank } : {};
+    this.abilities = { ...(save.abilities || {}) };
+    if (this.character.startingAbility && !Number(this.abilities[this.character.startingAbility])) {
+      this.abilities[this.character.startingAbility] = 1;
+    }
 
     // ---- loadout --------------------------------------------------------
     // Same weapon in both slots = dual wield: double fire rate, +30% damage,

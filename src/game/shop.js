@@ -4,7 +4,7 @@
  * All purchases are written straight into the save file.
  */
 import { ARMOR_PALETTES, LOCKED_CHARACTERS, LOCKED_PALETTES } from "./palettes";
-import { CHARACTERS, loadSave, writeSave } from "./core";
+import { CHARACTERS, isCharacterOwned, loadSave, writeSave } from "./core";
 
 export const ORBS_PER_STAGE = 40;
 export const ORBS_PER_SECRET = 80;
@@ -12,7 +12,6 @@ export const ORBS_PER_STAR = 5;
 
 /** Everything for sale, with an `owned` flag computed from the save. */
 export function buildShop(save) {
-  const ownedCharacters = save?.unlockedCharacters || [];
   const ownedPalettes = save?.unlockedPalettes || [];
 
   const characters = Object.entries(LOCKED_CHARACTERS).map(([index, price]) => {
@@ -25,7 +24,7 @@ export function buildShop(save) {
       description: CHARACTERS[i]?.blurb || "",
       price,
       swatch: [CHARACTERS[i]?.body, CHARACTERS[i]?.accent],
-      owned: ownedCharacters.includes(i),
+      owned: isCharacterOwned(save, i),
     };
   });
 
@@ -54,7 +53,7 @@ export function buyItem(item) {
   // ownership is re-read from the save, so a stale card can never double-charge
   const owned =
     item.kind === "character"
-      ? (save.unlockedCharacters || []).includes(item.value)
+      ? isCharacterOwned(save, item.value)
       : (save.unlockedPalettes || []).includes(item.value);
   if (item.owned || owned) return { ok: false, message: "ALREADY OWNED" };
 

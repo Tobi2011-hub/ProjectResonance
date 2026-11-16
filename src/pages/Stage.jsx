@@ -62,6 +62,7 @@ export default function Stage() {
       noDeath: payload.noDeath,
       unlockedSecret: result.unlockedSecret,
       unlockedAbility: result.unlockedAbility,
+      replacementAbility: result.replacementAbility,
       abilityRank: result.abilityRank,
       abilityUpgraded: result.abilityUpgraded,
       unlockedWeapon: result.unlockedWeapon,
@@ -114,6 +115,7 @@ export default function Stage() {
           noDeath={clear.noDeath}
           unlockedSecret={clear.unlockedSecret}
           unlockedAbility={clear.unlockedAbility}
+          replacementAbility={clear.replacementAbility}
           abilityRank={clear.abilityRank}
           abilityUpgraded={clear.abilityUpgraded}
           unlockedWeapon={clear.unlockedWeapon}

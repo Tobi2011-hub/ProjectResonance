@@ -67,6 +67,7 @@ export function ClearOverlay({
   noDeath,
   unlockedSecret,
   unlockedAbility,
+  replacementAbility,
   abilityRank = 0,
   abilityUpgraded = false,
   unlockedWeapon,
@@ -98,7 +99,7 @@ export function ClearOverlay({
               <div>
                 <p className="pa-pixel flex items-center gap-2 text-[8px] text-[#7af6c8]">
                   <Sparkles className="h-3 w-3" />{" "}
-                  {abilityUpgraded ? "ABILITY UPGRADED" : abilityRank >= 2 ? "ABILITY MAXED" : "ABILITY UNLOCKED"}
+                  {abilityUpgraded ? "ABILITY BUFFED" : abilityRank >= 2 ? "ABILITY MAXED" : "ABILITY UNLOCKED"}
                 </p>
                 <p className="pa-pixel mt-2 text-[11px] text-white">{ABILITIES[unlockedAbility]?.name}</p>
                 {abilityRank > 0 ? (
@@ -108,6 +109,22 @@ export function ClearOverlay({
               </div>
               <span className="pa-pixel mt-3 block text-2xl text-[#7af6c8] sm:mt-0">
                 {ABILITIES[unlockedAbility]?.glyph}
+              </span>
+            </div>
+          ) : null}
+
+          {replacementAbility ? (
+            <div className="mt-3 border border-[#4be3ff]/40 bg-[#4be3ff]/10 px-4 py-4 text-left sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="pa-pixel flex items-center gap-2 text-[8px] text-[#4be3ff]">
+                  <Sparkles className="h-3 w-3" /> NEW ABILITY
+                </p>
+                <p className="pa-pixel mt-2 text-[11px] text-white">{ABILITIES[replacementAbility]?.name}</p>
+                <p className="pa-pixel mt-1 text-[7px] text-[#4be3ff]/70">RANK 1</p>
+                <p className="mt-1 text-[12px] tracking-wide text-[#c6d2f2]/60">{ABILITIES[replacementAbility]?.blurb}</p>
+              </div>
+              <span className="pa-pixel mt-3 block text-2xl text-[#4be3ff] sm:mt-0">
+                {ABILITIES[replacementAbility]?.glyph}
               </span>
             </div>
           ) : null}

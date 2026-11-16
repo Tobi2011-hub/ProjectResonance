@@ -755,11 +755,11 @@ export const STARS_PER_STAGE = 6;
 export const MAX_STARS = TOTAL_STAGES * STARS_PER_STAGE;
 
 export const CHARACTERS = [
-  { id: "vg", name: "Vanguard", prefix: "vg", body: "#4be3ff", accent: "#ff3d8b", blurb: "Balanced frame. Standard dash tuning." },
-  { id: "nf", name: "Wraith", prefix: "nf", body: "#a78bfa", accent: "#4be3ff", blurb: "Light chassis. Sharper wall-kick arc." },
-  { id: "pm", name: "Ember", prefix: "pm", body: "#ff8a3d", accent: "#ffd166", blurb: "Heavy plating. Wider melee reach." },
-  { id: "sx", name: "Sentinel", prefix: "en", body: "#7af6c8", accent: "#ff3d8b", blurb: "Salvaged enemy chassis. Wide, low, relentless." },
-  { id: "vx", name: "Valkyrie", prefix: "vx", body: "#ffd166", accent: "#7af6c8", blurb: "High-altitude frame. Fast recovery and long aerial drift." },
+  { id: "vg", name: "Vanguard", prefix: "vg", body: "#4be3ff", accent: "#ff3d8b", blurb: "Balanced frame. Standard dash tuning.", startingAbility: "magnet" },
+  { id: "nf", name: "Wraith", prefix: "nf", body: "#a78bfa", accent: "#4be3ff", blurb: "Light chassis. Sharper wall-kick arc.", startingAbility: "leap" },
+  { id: "pm", name: "Ember", prefix: "pm", body: "#ff8a3d", accent: "#ffd166", blurb: "Heavy plating. Wider melee reach.", startingAbility: "phase" },
+  { id: "sx", name: "Sentinel", prefix: "en", body: "#7af6c8", accent: "#ff3d8b", blurb: "Salvaged enemy chassis. Wide, low, relentless.", startingAbility: "overdrive" },
+  { id: "vx", name: "Valkyrie", prefix: "vx", body: "#ffd166", accent: "#7af6c8", blurb: "High-altitude frame. Fast recovery and long aerial drift.", startingAbility: "glide" },
 ];
 
 // The armoury lives in weapons.js: one table shared by the engine, HUD and menus.
@@ -779,11 +779,19 @@ export const ABILITIES = {
   glide: { id: "glide", name: "Featherfall", blurb: "Glide while falling; rank 2 adds a horizontal float.", glyph: "~~" },
   magnet: { id: "magnet", name: "Star Chaser", blurb: "Attract nearby pickups; rank 2 greatly extends its reach.", glyph: "**" },
   overdrive: { id: "overdrive", name: "Overdrive", blurb: "Increase weapon damage by 10%; rank 2 increases it by 20%.", glyph: "!!" },
+  wallcling: { id: "wallcling", name: "Wall Cling", blurb: "Grip walls while holding toward them; rank 2 stops your fall completely.", glyph: "||" },
 };
 
 export const SECRET_ABILITIES = { 11: "leap", 12: "phase", 13: "glide", 14: "magnet", 15: "overdrive" };
-export const CHARACTER_SKILLS = { 0: "magnet", 1: "leap", 2: "phase", 3: "overdrive", 4: "glide" };
+export const CHARACTER_SKILLS = Object.fromEntries(CHARACTERS.map((character, index) => [index, character.startingAbility]));
 export const MAX_ABILITY_RANK = 2;
+
+function addCharacterStarterAbility(abilities, characterIndex) {
+  const result = { ...abilities };
+  const starter = CHARACTERS[characterIndex]?.startingAbility;
+  if (starter && !Number(result[starter])) result[starter] = 1;
+  return result;
+}
 
 const emptyStars = () => {
   const stars = {};
@@ -877,9 +885,9 @@ function normalize(parsed) {
   save.armor = { ...base.armor, ...(parsed.armor || {}) };
   save.settings = { ...base.settings, ...(parsed.settings || {}) };
   save.settings.controls = { ...DEFAULT_CONTROLS, ...((parsed.settings || {}).controls || {}) };
-  save.abilities = Object.fromEntries(
+  save.abilities = addCharacterStarterAbility(Object.fromEntries(
     Object.entries(parsed.abilities || {}).map(([id, rank]) => [id, Math.max(0, Math.min(MAX_ABILITY_RANK, rank === true ? 1 : Number(rank) || 0))])
-  );
+  ), save.character);
   save.stars = { ...emptyStars(), ...(parsed.stars || {}) };
   Object.keys(save.stars).forEach((key) => {
     const list = [...save.stars[key]];
@@ -907,6 +915,7 @@ export function writeSave(patch) {
     next.settings.controls = { ...current.settings.controls, ...(patch.settings.controls || {}) };
   }
   if (patch?.abilities) next.abilities = { ...current.abilities, ...patch.abilities };
+  next.abilities = addCharacterStarterAbility(next.abilities || {}, next.character);
   localStorage.setItem(saveSlotKey(getActiveSaveSlot()), JSON.stringify(next));
   return next;
 }
@@ -952,6 +961,7 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
   const unlockedWeapons = new Set(save.unlockedWeapons || []);
   let unlockedSecret = null;
   let unlockedAbility = null;
+  let replacementAbility = null;
   let abilityRank = 0;
   let abilityUpgraded = false;
   let unlockedWeapon = null;
@@ -972,6 +982,10 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
       abilityUpgraded = currentRank > 0 && abilityRank > currentRank;
       unlockedAbility = ability;
       abilities[ability] = abilityRank;
+      if (currentRank > 0 && !abilities.wallcling) {
+        replacementAbility = "wallcling";
+        abilities[replacementAbility] = 1;
+      }
     }
   }
 
@@ -1005,7 +1019,7 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
     orbs: (save.orbs || 0) + orbGain,
     highestStage: MAIN_STAGES >= stage ? Math.min(MAIN_STAGES, Math.max(save.highestStage || 1, stage + 1)) : save.highestStage,
   });
-  return { save: next, unlockedSecret, unlockedAbility, abilityRank, abilityUpgraded, unlockedWeapon, orbGain };
+  return { save: next, unlockedSecret, unlockedAbility, replacementAbility, abilityRank, abilityUpgraded, unlockedWeapon, orbGain };
 }
 
 export function recordStar(stage, index) {
@@ -1032,7 +1046,12 @@ export function isWeaponOwned(save, id) {
 
 export function isCharacterOwned(save, index) {
   if (!(index in LOCKED_CHARACTERS)) return true;
-  return (save?.unlockedCharacters || []).includes(index);
+  if ((save?.unlockedCharacters || []).includes(index)) return true;
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot += 1) {
+    const slotSave = loadSave(slot);
+    if ((slotSave?.unlockedCharacters || []).includes(index)) return true;
+  }
+  return false;
 }
 
 export function isPaletteOwned(save, name) {
