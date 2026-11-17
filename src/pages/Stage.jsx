@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Gem, HeartCrack, Lock, RotateCcw } from "lucide-react";
 import { ClearOverlay, GameCanvas } from "@/components/game/GameUI";
 import { getLevel } from "@/game/world";
-import { completeStage, isStageUnlocked, loadSave } from "@/game/core";
+import { completeStage, isLevelSelectUnlocked, isStageUnlocked, loadSave } from "@/game/core";
 
 export default function Stage() {
   const { stage } = useParams();
@@ -16,7 +16,7 @@ export default function Stage() {
   const [briefing, setBriefing] = useState(true);
 
   useEffect(() => {
-    if (!save || !isStageUnlocked(save, level.id)) return undefined;
+    if (!save || (!isStageUnlocked(save, level.id) && !isLevelSelectUnlocked(save))) return undefined;
     const timer = setTimeout(() => setBriefing(false), 1800);
     return () => clearTimeout(timer);
   }, [level.id, save]);
@@ -27,7 +27,7 @@ export default function Stage() {
 
   if (!save) return null;
 
-  if (!isStageUnlocked(save, level.id)) {
+  if (!isStageUnlocked(save, level.id) && !isLevelSelectUnlocked(save)) {
     return (
       <div className="pa-root flex min-h-screen flex-col items-center justify-center px-6 text-center">
         <Lock className="h-8 w-8 text-[#c6d2f2]/30" />

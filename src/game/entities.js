@@ -889,8 +889,8 @@ const ATTACKS_P2 = ["dash", "spread", "leap", "teleport", "rain", "sweep"];
 
 export class Boss {
   constructor(tx, groundRow, arena) {
-    this.w = 96;
-    this.h = 104;
+    this.w = PLAYER_H * 2;
+    this.h = PLAYER_H * 2;
     this.x = tx * TILE - this.w / 2;
     this.y = groundRow * TILE - this.h;
     this.spawn = { x: this.x, y: this.y };
@@ -910,6 +910,8 @@ export class Boss {
     this.onGround = true;
     this.animTime = 0;
     this.flash = 0;
+    this.hitReact = 0;
+    this.hitDirection = 1;
     this.history = [];
     this.spreadStage = 0;
     this.introTimer = 0;
@@ -961,6 +963,7 @@ export class Boss {
     const world = engine.bossWorld || engine.world;
     this.animTime += dt;
     if (this.flash > 0) this.flash -= dt;
+    if (this.hitReact > 0) this.hitReact = Math.max(0, this.hitReact - dt);
 
     if (this.state === "dormant") return;
     if (this.state === "dead") return;
@@ -1103,8 +1106,8 @@ export class Boss {
     }
 
     if (this.state === "dash" && overlaps(this, player) && player.invuln <= 0) {
-      player.hurt(BOSS_DAMAGE, this.x + this.w / 2);
-      sfx("hit");
+      if (engine?.bossHitPlayer) engine.bossHitPlayer(BOSS_DAMAGE, this.x + this.w / 2);
+      else player.hurt(BOSS_DAMAGE, this.x + this.w / 2);
     }
 
     this.x = clamp(this.x, this.minX, this.maxX - this.w);
@@ -1179,6 +1182,8 @@ export class Boss {
     const dealt = Math.max(1, amount * (1 - this.defense));
     this.hp = Math.max(0, this.hp - dealt);
     this.flash = 0.14;
+    this.hitReact = 0.16;
+    this.hitDirection = Math.sign(this.x + this.w / 2 - (engine?.player?.centerX ?? this.x)) || 1;
     if (this.hp <= 0) {
       if (!this.phaseTwo) {
         this.startPhaseTwo(engine);

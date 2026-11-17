@@ -3,29 +3,29 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowLeftRight, Gem, Play, ShoppingBag, Zap } from "lucide-react";
 import { PixelBackdrop } from "@/components/game/GameUI";
 import {
+  AbilitySelect,
   ARMOR_PALETTES,
   ArmorSwatches,
   CharacterSelect,
   SpritePreview,
   WeaponSelect,
-  armorIndex,
 } from "@/components/customize/CustomizePieces";
 import {
+  ABILITIES,
   CHARACTERS,
   DUAL,
+  MAX_HEALTH,
   WEAPON_ORDER,
   WEAPON_TYPES,
   clearSave,
   createDefaultSave,
-  isCharacterOwned,
-  isPaletteOwned,
-  isWeaponOwned,
   loadSave,
+  normalizeAbilityLoadout,
   sfx,
   writeSave,
 } from "@/game/core";
 
-const ROWS = ["character", "armor", "primary", "secondary", "start"];
+const ROWS = ["character", "armor", "primary", "secondary", "abilities", "start"];
 
 export default function Customize() {
   const navigate = useNavigate();
@@ -36,27 +36,38 @@ export default function Customize() {
   });
   const save = initial.save;
   const isExistingSave = initial.existingSave;
-  const rows = isExistingSave ? ["primary", "secondary", "start"] : ROWS;
+  const initialCharacter = CHARACTERS[save.character] ? save.character : 0;
 
-  const [character, setCharacter] = useState(!isNew && isCharacterOwned(save, save.character) ? save.character || 0 : 0);
-  const [armorPick, setArmorPick] = useState(() => (!isNew && !isExistingSave ? armorIndex(save.armor, CHARACTERS[save.character || 0]) : 0));
-  const [primary, setPrimary] = useState(isWeaponOwned(save, save.primary) ? save.primary || "buster" : "buster");
-  const [secondary, setSecondary] = useState(isWeaponOwned(save, save.secondary) ? save.secondary || "blade" : "blade");
+  const [character, setCharacter] = useState(initialCharacter);
+  const [armor, setArmor] = useState(() => ({
+    body: CHARACTERS[initialCharacter].body,
+    accent: CHARACTERS[initialCharacter].accent,
+    glow: CHARACTERS[initialCharacter].glow,
+    ...(isNew ? {} : save.armor),
+  }));
+  const [palettePick, setPalettePick] = useState(0);
+  const [primary, setPrimary] = useState(WEAPON_TYPES[save.primary] ? save.primary : "buster");
+  const [secondary, setSecondary] = useState(WEAPON_TYPES[save.secondary] ? save.secondary : "blade");
+  const [abilityLoadout, setAbilityLoadout] = useState(() =>
+    isNew
+      ? [{ id: CHARACTERS[save.character || 0].startingAbility, rank: 1 }]
+      : normalizeAbilityLoadout(save.abilityLoadout, save.abilities)
+  );
+  const [abilityCursor, setAbilityCursor] = useState(0);
   const [focus, setFocus] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [notice, setNotice] = useState("");
 
   const frame = CHARACTERS[character];
-  // index 0 always follows the chosen frame's own default colours
   const palettes = [
-    { name: "Default", body: frame.body, accent: frame.accent, locked: false },
-    ...ARMOR_PALETTES.map((palette) => ({ ...palette, locked: !isPaletteOwned(save, palette.name) })),
+    { name: `${frame.name} Default`, body: frame.body, accent: frame.accent, glow: frame.glow },
+    ...ARMOR_PALETTES.map((palette) => ({ ...palette, glow: palette.glow || "#fff6c9", locked: false })),
   ];
-  const armor = palettes[Math.min(armorPick, palettes.length - 1)] || palettes[0];
-  const lockedChars = CHARACTERS.map((_, i) => !isCharacterOwned(save, i)).reduce((acc, locked, i) => (locked ? [...acc, i] : acc), []);
-  const lockedWeapons = WEAPON_ORDER.filter((id) => !isWeaponOwned(save, id));
+  const unlockedAbilities = { ...(save.abilities || {}) };
+  if (!Number(unlockedAbilities[frame.startingAbility])) unlockedAbilities[frame.startingAbility] = 1;
+  const abilityIds = Object.keys(ABILITIES).filter((id) => Number(unlockedAbilities[id]) > 0);
   const dual = primary === secondary;
-  const maxHealth = dual ? DUAL.health : 1000;
+  const maxHealth = dual ? DUAL.health : MAX_HEALTH;
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -64,77 +75,80 @@ export default function Customize() {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  // keep the swatch index inside the palette list when the frame changes
-  useEffect(() => {
-    setArmorPick((i) => Math.min(i, palettes.length - 1));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [character]);
-
-  const cycleList = (length, current, dir, isLocked) => {
-    for (let step = 1; step <= length; step += 1) {
-      const next = (current + dir * step + length * 2) % length;
-      if (!isLocked(next)) return next;
+  const chooseCharacter = (index) => {
+    setCharacter(index);
+    setPalettePick(0);
+    setAbilityCursor(0);
+    setArmor({ body: CHARACTERS[index].body, accent: CHARACTERS[index].accent, glow: CHARACTERS[index].glow });
+    if (isNew) {
+      setAbilityLoadout((current) => {
+        const alreadyUnlocked = current.filter((entry) => Number(save.abilities?.[entry.id]) > 0);
+        return alreadyUnlocked.length
+          ? alreadyUnlocked
+          : [{ id: CHARACTERS[index].startingAbility, rank: 1 }];
+      });
     }
-    return current;
   };
 
   const start = () => {
     if (leaving) return;
     sfx("select");
     setLeaving(true);
+    const loadout = normalizeAbilityLoadout(abilityLoadout, unlockedAbilities);
     if (isExistingSave) {
-      writeSave({ primary, secondary });
+      writeSave({ character, armor, primary, secondary, abilityLoadout: loadout });
       setTimeout(() => navigate("/world"), 1600);
       return;
     }
     clearSave();
-    const chosen = palettes[armorPick]?.locked ? palettes[0] : armor;
-    writeSave({ character, armor: { body: chosen.body, accent: chosen.accent }, primary, secondary });
+    writeSave({ character, armor, primary, secondary, abilityLoadout: loadout });
     setTimeout(() => navigate("/stage/1"), 1000);
   };
 
   useEffect(() => {
     const pickPalette = (dir) => {
-      setArmorPick((i) => {
-        const next = cycleList(palettes.length, i, dir, (n) => palettes[n].locked);
-        if (next === i && palettes[(i + dir + palettes.length) % palettes.length]?.locked) {
-          setNotice("PALETTE LOCKED — BUY IT IN THE SHOP");
-          sfx("hurt");
-        }
-        return next;
-      });
+      const next = (palettePick + dir + palettes.length) % palettes.length;
+      setPalettePick(next);
+      setArmor({ body: palettes[next].body, accent: palettes[next].accent, glow: palettes[next].glow });
     };
     const pickWeapon = (current, setter, dir) => {
       const idx = WEAPON_ORDER.indexOf(current);
-      const next = cycleList(WEAPON_ORDER.length, idx, dir, (n) => !isWeaponOwned(save, WEAPON_ORDER[n]));
-      if (next === idx) setNotice("WEAPON LOCKED — COLLECT EVERY COIN IN STAGE 1, 3 OR 5");
-      setter(WEAPON_ORDER[next]);
+      setter(WEAPON_ORDER[(idx + dir + WEAPON_ORDER.length) % WEAPON_ORDER.length]);
+    };
+    const toggleAbility = (id) => {
+      setAbilityLoadout((current) =>
+        current.some((entry) => entry.id === id)
+          ? current.filter((entry) => entry.id !== id)
+          : [...current, { id, rank: 1 }]
+      );
     };
 
     const cycle = (dir) => {
-      const row = rows[focus];
+      const row = ROWS[focus];
       if (row === "character") {
-        const next = cycleList(CHARACTERS.length, character, dir, (n) => !isCharacterOwned(save, n));
-        if (next === character) {
-          setNotice("FRAME LOCKED — BUY IT IN THE SHOP");
-          sfx("hurt");
-        }
-        setCharacter(next);
+        chooseCharacter((character + dir + CHARACTERS.length) % CHARACTERS.length);
       } else if (row === "armor") pickPalette(dir);
       else if (row === "primary") pickWeapon(primary, setPrimary, dir);
       else if (row === "secondary") pickWeapon(secondary, setSecondary, dir);
-      else start();
+      else if (row === "abilities" && abilityIds.length) {
+        setAbilityCursor((abilityCursor + dir + abilityIds.length) % abilityIds.length);
+      } else start();
     };
 
     const onKey = (event) => {
       if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " "].includes(event.key)) return;
+      if (
+        (event.key === "Enter" || event.key === " ") &&
+        event.target instanceof HTMLElement &&
+        event.target.closest("button, input")
+      ) return;
       event.preventDefault();
       if (event.key === "ArrowUp") {
         sfx("move");
-        setFocus((f) => (f - 1 + rows.length) % rows.length);
+        setFocus((f) => (f - 1 + ROWS.length) % ROWS.length);
       } else if (event.key === "ArrowDown") {
         sfx("move");
-        setFocus((f) => (f + 1) % rows.length);
+        setFocus((f) => (f + 1) % ROWS.length);
       } else if (event.key === "ArrowLeft") {
         sfx("move");
         cycle(-1);
@@ -142,7 +156,10 @@ export default function Customize() {
         sfx("move");
         cycle(1);
       } else if (event.key === "Enter" || event.key === " ") {
-        if (rows[focus] === "start") start();
+        if (ROWS[focus] === "start") start();
+        else if (ROWS[focus] === "abilities" && abilityIds.length) {
+          toggleAbility(abilityIds[abilityCursor % abilityIds.length]);
+        }
         else cycle(1);
       }
     };
@@ -151,46 +168,30 @@ export default function Customize() {
   });
 
   const handleCharacter = (index) => {
-    if (isExistingSave) {
-      setNotice("FRAME LOCKED — START A NEW GAME TO CHANGE IT");
-      return;
-    }
-    if (!isCharacterOwned(save, index)) {
-      sfx("hurt");
-      setNotice("FRAME LOCKED — BUY IT IN THE SHOP");
-      return;
-    }
     sfx("move");
-    setCharacter(index);
-    setArmorPick(0);
+    chooseCharacter(index);
   };
 
-  const handlePalette = (index) => {
-    if (isExistingSave) {
-      setNotice("ARMOR LOCKED — START A NEW GAME TO CHANGE IT");
-      return;
-    }
-    if (palettes[index]?.locked) {
-      sfx("hurt");
-      setNotice("PALETTE LOCKED — BUY IT IN THE SHOP");
-      return;
-    }
+  const handlePalette = (index, palette) => {
     sfx("move");
-    setArmorPick(index);
+    setPalettePick(index);
+    setArmor({ body: palette.body, accent: palette.accent, glow: palette.glow });
   };
 
   const handleWeapon = (id, setter) => {
-    if (!isWeaponOwned(save, id)) {
-      sfx("hurt");
-      setNotice("WEAPON LOCKED — COLLECT EVERY COIN IN STAGE 1, 3 OR 5");
-      return;
-    }
     sfx("move");
     setter(id);
   };
 
+  const handleAbilityRank = (id, rank) => {
+    setAbilityLoadout((current) => [
+      ...current.filter((entry) => entry.id !== id),
+      { id, rank },
+    ]);
+  };
+
   return (
-    <div className="pa-root relative min-h-screen overflow-hidden">
+    <div className="pa-root relative min-h-screen overflow-x-hidden">
       <PixelBackdrop variant="purple" />
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-4 sm:px-8">
         <header className="flex items-center justify-between border-b border-white/[0.06] pb-3">
@@ -214,7 +215,7 @@ export default function Customize() {
             </span>
           </div>
           <div className="text-right">
-            <p className="pa-pixel text-[8px] text-[#4be3ff]/70">LOADOUT</p>
+            <p className="pa-pixel text-[8px] text-[#4be3ff]/70">LOADOUT HUB</p>
             <h1 className="pa-pixel mt-1 text-[10px] text-white sm:text-[13px]">CHARACTER CUSTOMIZATION</h1>
           </div>
         </header>
@@ -231,25 +232,20 @@ export default function Customize() {
               <p className="mt-2 text-sm leading-snug tracking-wide text-[#c6d2f2]/55">{frame.blurb}</p>
             </div>
             <div className="mt-3 space-y-2">
-              {isExistingSave ? (
-                <div className="border border-[#ff3d8b]/35 bg-[#ff3d8b]/[0.06] px-3 py-3">
-                  <p className="pa-pixel text-[8px] text-[#ff3d8b]">FRAME & ARMOR LOCKED</p>
-                  <p className="mt-2 text-xs leading-relaxed tracking-wide text-[#c6d2f2]/55">
-                    Your character is fixed for this save. Start a new game to choose another character or armor.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <CharacterSelect
-                    characters={CHARACTERS}
-                    index={character}
-                    onSelect={handleCharacter}
-                    active={rows[focus] === "character"}
-                    lockedIndexes={lockedChars}
-                  />
-                  <ArmorSwatches palettes={palettes} index={armorPick} onSelect={handlePalette} active={rows[focus] === "armor"} />
-                </>
-              )}
+              <CharacterSelect
+                characters={CHARACTERS}
+                index={character}
+                onSelect={handleCharacter}
+                active={ROWS[focus] === "character"}
+              />
+              <ArmorSwatches
+                palettes={palettes}
+                index={palettePick}
+                onSelect={handlePalette}
+                active={ROWS[focus] === "armor"}
+                armor={armor}
+                onColorChange={(key, value) => setArmor((current) => ({ ...current, [key]: value }))}
+              />
             </div>
           </section>
 
@@ -258,20 +254,35 @@ export default function Customize() {
               title="PRIMARY WEAPON"
               value={primary}
               onChange={(id) => handleWeapon(id, setPrimary)}
-              active={rows[focus] === "primary"}
+              active={ROWS[focus] === "primary"}
               types={WEAPON_TYPES}
               order={WEAPON_ORDER}
-              lockedIds={lockedWeapons}
             />
             <WeaponSelect
               title="SECONDARY WEAPON"
               value={secondary}
               onChange={(id) => handleWeapon(id, setSecondary)}
-              active={rows[focus] === "secondary"}
+              active={ROWS[focus] === "secondary"}
               types={WEAPON_TYPES}
               order={WEAPON_ORDER}
-              lockedIds={lockedWeapons}
             />
+
+            <div className="sm:col-span-2">
+              <AbilitySelect
+                unlocked={unlockedAbilities}
+                loadout={abilityLoadout}
+                onToggle={(id) =>
+                  setAbilityLoadout((current) =>
+                    current.some((entry) => entry.id === id)
+                      ? current.filter((entry) => entry.id !== id)
+                      : [...current, { id, rank: 1 }]
+                  )
+                }
+                onRankChange={handleAbilityRank}
+                active={ROWS[focus] === "abilities"}
+                focusedId={abilityIds[abilityCursor % (abilityIds.length || 1)]}
+              />
+            </div>
 
             <div className="sm:col-span-2">
               <div className="pa-panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -300,7 +311,7 @@ export default function Customize() {
                   </div>
                   {dual ? (
                     <p className="pa-pixel mt-2 flex items-center gap-1.5 text-[7px] text-[#ffd166]">
-                      <Zap className="h-3 w-3" /> DUAL WIELD: DOUBLE FIRE RATE · +30% DAMAGE · HALF AMMO · 600 HP
+                      <Zap className="h-3 w-3" /> DUAL WIELD: DOUBLE FIRE RATE · +30% DAMAGE · HALF AMMO · 720 HP
                     </p>
                   ) : (
                     <p className="mt-2 text-[12px] tracking-wide text-[#c6d2f2]/50">
@@ -313,7 +324,7 @@ export default function Customize() {
                   type="button"
                   onClick={start}
                   className={`pa-pixel flex shrink-0 items-center gap-2 px-5 py-3 text-[10px] transition-transform hover:scale-[1.02] ${
-                    rows[focus] === "start" ? "bg-[#ff3d8b] text-[#05060d]" : "bg-[#4be3ff] text-[#05060d]"
+                    ROWS[focus] === "start" ? "bg-[#ff3d8b] text-[#05060d]" : "bg-[#4be3ff] text-[#05060d]"
                   }`}
                 >
                   <Play className="h-3 w-3" /> {isExistingSave ? "SAVE LOADOUT" : "START MISSION"}
@@ -325,7 +336,7 @@ export default function Customize() {
 
         <footer className="border-t border-white/[0.06] pt-3">
           <p className="pa-pixel text-[7px] text-[#c6d2f2]/25">
-            ↑↓ ROW · ←→ CYCLE · ENTER SELECT · {isExistingSave ? "ONLY WEAPONS CAN BE CHANGED" : "LOCKED ITEMS LIVE IN THE SHOP"}
+            ↑↓ ROW · ←→ CYCLE · ENTER SELECT · CUSTOMIZE YOUR FRAME, COLORS, WEAPONS & ABILITIES
           </p>
         </footer>
       </div>
@@ -341,7 +352,7 @@ export default function Customize() {
             </h2>
             {isExistingSave ? (
               <>
-                <p className="mt-4 text-sm tracking-wide text-[#c6d2f2]/55">Your new weapon loadout is ready.</p>
+                <p className="mt-4 text-sm tracking-wide text-[#c6d2f2]/55">Your custom frame, palette, weapons, and abilities are ready.</p>
                 <div className="mt-6 grid gap-2 sm:grid-cols-2">
                   <p className="pa-pixel border border-[#4be3ff]/35 bg-[#4be3ff]/[0.05] px-3 py-3 text-[7px] text-[#4be3ff]">
                     PRIMARY · {WEAPON_TYPES[primary]?.name}

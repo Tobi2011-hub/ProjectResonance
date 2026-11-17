@@ -52,8 +52,8 @@ export const GRAVITY = GRAVITY_RISE;
 /** Maximum falling speed (caps how fast you can drop). */
 export const MAX_FALL = 740;
 
-/** Top running speed. 200 ≈ 4.1 tiles per second. */
-export const RUN_SPEED = 200;
+/** Top running speed. 220 ≈ 4.6 tiles per second. */
+export const RUN_SPEED = 220;
 
 /** How quickly you reach top speed on the ground. Higher = less slippery. */
 export const ACCEL = 3600;
@@ -112,8 +112,11 @@ export const PLAYER_W = 14;
 /** Collision box height. 26 fits through 2-tile-high (32px) gaps. */
 export const PLAYER_H = 26;
 
-/** Total HP. 1000 gives long, readable fights against big enemy health. */
-export const MAX_HEALTH = 1000;
+/** Total HP. */
+export const MAX_HEALTH = 1200;
+
+/** Small global boost to player weapon damage. */
+export const PLAYER_DAMAGE_MULTIPLIER = 1.1;
 
 /** Lives per stage — RESETS every time a stage starts. */
 export const START_LIVES = 3;
@@ -753,13 +756,15 @@ export const STAR_SECRETS = { 16: 2, 17: 4, 18: 6 };
 export const TOTAL_STAGES = MAIN_STAGES + SECRET_STAGES.length;
 export const STARS_PER_STAGE = 6;
 export const MAX_STARS = TOTAL_STAGES * STARS_PER_STAGE;
+export const COIN_CHALLENGE_STAGES = [1, 3, 5];
+export const COINS_PER_CHALLENGE_STAGE = 10;
 
 export const CHARACTERS = [
-  { id: "vg", name: "Vanguard", prefix: "vg", body: "#4be3ff", accent: "#ff3d8b", blurb: "Balanced frame. Standard dash tuning.", startingAbility: "magnet" },
-  { id: "nf", name: "Wraith", prefix: "nf", body: "#a78bfa", accent: "#4be3ff", blurb: "Light chassis. Sharper wall-kick arc.", startingAbility: "leap" },
-  { id: "pm", name: "Ember", prefix: "pm", body: "#ff8a3d", accent: "#ffd166", blurb: "Heavy plating. Wider melee reach.", startingAbility: "phase" },
-  { id: "sx", name: "Sentinel", prefix: "en", body: "#7af6c8", accent: "#ff3d8b", blurb: "Salvaged enemy chassis. Wide, low, relentless.", startingAbility: "overdrive" },
-  { id: "vx", name: "Valkyrie", prefix: "vx", body: "#ffd166", accent: "#7af6c8", blurb: "High-altitude frame. Fast recovery and long aerial drift.", startingAbility: "glide" },
+  { id: "vg", name: "Vanguard", prefix: "vg", body: "#4be3ff", accent: "#ff3d8b", glow: "#fff6c9", blurb: "Balanced frame. Standard dash tuning.", startingAbility: "magnet" },
+  { id: "nf", name: "Wraith", prefix: "nf", body: "#a78bfa", accent: "#4be3ff", glow: "#e6d9ff", blurb: "Light chassis. Sharper wall-kick arc.", startingAbility: "leap" },
+  { id: "pm", name: "Ember", prefix: "pm", body: "#ff8a3d", accent: "#ffd166", glow: "#fff0b3", blurb: "Heavy plating. Wider melee reach.", startingAbility: "phase" },
+  { id: "sx", name: "Sentinel", prefix: "en", body: "#7af6c8", accent: "#ff3d8b", glow: "#d8fff2", blurb: "Salvaged enemy chassis. Wide, low, relentless.", startingAbility: "overdrive" },
+  { id: "vx", name: "Valkyrie", prefix: "vx", body: "#ffd166", accent: "#7af6c8", glow: "#fff8d6", blurb: "High-altitude frame. Fast recovery and long aerial drift.", startingAbility: "glide" },
 ];
 
 // The armoury lives in weapons.js: one table shared by the engine, HUD and menus.
@@ -807,6 +812,7 @@ export const createDefaultSave = () => ({
   armor: {
     body: "#4be3ff",
     accent: "#ff3d8b",
+    glow: "#fff6c9",
   },
   primary: "buster",
   secondary: "blade",
@@ -815,6 +821,8 @@ export const createDefaultSave = () => ({
   secrets: [],
   stars: emptyStars(),
   abilities: {},
+  abilityLoadout: [],
+  collectedCoins: {},
   orbs: 0,
   unlockedCharacters: [],
   unlockedPalettes: [],
@@ -882,12 +890,23 @@ function normalize(parsed) {
   const migrateWeaponId = (id) => ({ scatter: "cyclone", nova: "seeker" }[id] || id);
   save.primary = migrateWeaponId(save.primary);
   save.secondary = migrateWeaponId(save.secondary);
-  save.armor = { ...base.armor, ...(parsed.armor || {}) };
+  const frame = CHARACTERS[save.character] || CHARACTERS[0];
+  save.armor = {
+    ...base.armor,
+    ...(parsed.armor || {}),
+    glow: parsed.armor?.glow || frame.glow || base.armor.glow,
+  };
   save.settings = { ...base.settings, ...(parsed.settings || {}) };
   save.settings.controls = { ...DEFAULT_CONTROLS, ...((parsed.settings || {}).controls || {}) };
   save.abilities = addCharacterStarterAbility(Object.fromEntries(
     Object.entries(parsed.abilities || {}).map(([id, rank]) => [id, Math.max(0, Math.min(MAX_ABILITY_RANK, rank === true ? 1 : Number(rank) || 0))])
   ), save.character);
+  save.abilityLoadout = Array.isArray(parsed.abilityLoadout)
+    ? normalizeAbilityLoadout(parsed.abilityLoadout, save.abilities)
+    : normalizeAbilityLoadout(
+        Object.entries(save.abilities).map(([id, rank]) => ({ id, rank })),
+        save.abilities
+      );
   save.stars = { ...emptyStars(), ...(parsed.stars || {}) };
   Object.keys(save.stars).forEach((key) => {
     const list = [...save.stars[key]];
@@ -902,7 +921,30 @@ function normalize(parsed) {
   save.unlockedWeapons = Array.isArray(parsed.unlockedWeapons)
     ? [...new Set(parsed.unlockedWeapons.map(migrateWeaponId))]
     : [];
+  save.collectedCoins = Object.fromEntries(
+    COIN_CHALLENGE_STAGES.map((stage) => [
+      stage,
+      Array.isArray(parsed.collectedCoins?.[stage])
+        ? parsed.collectedCoins[stage].slice(0, COINS_PER_CHALLENGE_STAGE).map(Boolean)
+        : save.unlockedWeapons.includes(CHALLENGE_WEAPONS[stage])
+        ? Array(COINS_PER_CHALLENGE_STAGE).fill(true)
+        : [],
+    ])
+  );
   return save;
+}
+
+export function normalizeAbilityLoadout(loadout, unlockedAbilities) {
+  const seen = new Set();
+  return (Array.isArray(loadout) ? loadout : []).reduce((result, entry) => {
+    const id = typeof entry === "string" ? entry : entry?.id;
+    const maxRank = Math.floor(Number(unlockedAbilities?.[id]) || 0);
+    if (!ABILITIES[id] || maxRank < 1 || seen.has(id)) return result;
+    const requestedRank = typeof entry === "string" ? maxRank : Math.floor(Number(entry.rank) || 1);
+    seen.add(id);
+    result.push({ id, rank: Math.max(1, Math.min(maxRank, requestedRank)) });
+    return result;
+  }, []);
 }
 
 export function writeSave(patch) {
@@ -916,6 +958,13 @@ export function writeSave(patch) {
   }
   if (patch?.abilities) next.abilities = { ...current.abilities, ...patch.abilities };
   next.abilities = addCharacterStarterAbility(next.abilities || {}, next.character);
+  next.abilityLoadout = normalizeAbilityLoadout(
+    patch?.abilityLoadout || current.abilityLoadout,
+    next.abilities
+  );
+  if (patch?.collectedCoins) {
+    next.collectedCoins = { ...current.collectedCoins, ...patch.collectedCoins };
+  }
   localStorage.setItem(saveSlotKey(getActiveSaveSlot()), JSON.stringify(next));
   return next;
 }
@@ -941,6 +990,30 @@ export function stageStars(save, stage) {
 
 export function totalStars(save) {
   return Object.values(save?.stars || {}).reduce((sum, list) => sum + list.filter(Boolean).length, 0);
+}
+
+export function isLevelSelectUnlocked(save) {
+  if (!save) return false;
+  const allShardsCollected = Array.from({ length: TOTAL_STAGES }, (_, index) => index + 1).every((stage) => {
+    const count = stage === 10 ? 1 : 5;
+    return Array.from({ length: count }, (_, index) => Boolean(save.stars?.[stage]?.[index])).every(Boolean);
+  });
+  const allCoinsCollected = COIN_CHALLENGE_STAGES.every((stage) =>
+    Array.from({ length: COINS_PER_CHALLENGE_STAGE }, (_, index) => Boolean(save.collectedCoins?.[stage]?.[index])).every(Boolean)
+  );
+  return allShardsCollected && allCoinsCollected;
+}
+
+export function recordCoin(stage, index) {
+  if (!COIN_CHALLENGE_STAGES.includes(stage) || !Number.isInteger(index) || index < 0 || index >= COINS_PER_CHALLENGE_STAGE) {
+    throw new RangeError("Coin progress must reference a valid challenge stage and coin index.");
+  }
+  const save = loadSave() || createDefaultSave();
+  const coins = [...(save.collectedCoins?.[stage] || [])];
+  if (coins[index]) return save;
+  while (coins.length <= index) coins.push(false);
+  coins[index] = true;
+  return writeSave({ collectedCoins: { [stage]: coins } });
 }
 
 export function isStageUnlocked(save, stage) {

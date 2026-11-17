@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Crosshair, Lock, Sword, Zap } from "lucide-react";
 import { drawChar, loadAssets } from "@/game/world";
 import { ARMOR_PALETTES, LOCKED_PALETTES } from "@/game/palettes";
+import { ABILITIES } from "@/game/core";
 
 export { ARMOR_PALETTES };
 
@@ -94,11 +95,11 @@ export function CharacterSelect({ characters, index, onSelect, active, lockedInd
   );
 }
 
-export function ArmorSwatches({ palettes, index, onSelect, active }) {
+export function ArmorSwatches({ palettes, index, onSelect, active, armor, onColorChange }) {
   return (
     <div className={`border p-3 transition-colors ${active ? "border-[#4be3ff]/70 bg-[#4be3ff]/[0.06]" : "border-[#2a2f52]"}`}>
       <div className="flex items-center justify-between">
-        <p className="pa-pixel text-[8px] text-[#c6d2f2]/50">ARMOR PALETTE</p>
+        <p className="pa-pixel text-[8px] text-[#c6d2f2]/50">CUSTOM RGB PALETTE</p>
         <p className="pa-pixel text-[8px] text-white">{palettes[index]?.name}</p>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -106,25 +107,108 @@ export function ArmorSwatches({ palettes, index, onSelect, active }) {
           <button
             key={palette.name}
             type="button"
-            onClick={() => onSelect(i)}
+            onClick={() => onSelect(i, palette)}
             aria-label={`${palette.name} armor${palette.locked ? " (locked)" : ""}`}
             className={`relative h-9 w-9 border-2 transition-transform ${
               i === index ? "scale-105 border-white" : "border-transparent hover:scale-105"
             }`}
-            style={{ background: `linear-gradient(135deg, ${palette.body}, ${palette.accent})` }}
+            style={{ background: `linear-gradient(135deg, ${palette.body}, ${palette.accent}, ${palette.glow || "#fff6c9"})` }}
           >
             {i === index ? <span className="absolute inset-0 border border-[#05060d]" /> : null}
-            {palette.locked ? (
-              <span className="absolute inset-0 grid place-items-center bg-[#04050b]/65">
-                <Lock className="h-3 w-3 text-[#ffd166]" />
-              </span>
-            ) : null}
           </button>
         ))}
       </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[
+          ["body", "ARMOR"],
+          ["accent", "PLATE"],
+          ["glow", "GLOW"],
+        ].map(([key, label]) => (
+          <label key={key} className="flex min-w-0 flex-col gap-1">
+            <span className="pa-pixel text-[6px] text-[#c6d2f2]/50">{label}</span>
+            <input
+              type="color"
+              value={armor[key] || "#ffffff"}
+              onChange={(event) => onColorChange(key, event.target.value)}
+              aria-label={`${label} color`}
+              className="h-9 w-full cursor-pointer border border-[#2a2f52] bg-transparent p-1"
+            />
+            <span className="pa-pixel text-[5px] text-[#c6d2f2]/35">{armor[key]?.toUpperCase()}</span>
+          </label>
+        ))}
+      </div>
       <p className="pa-pixel mt-2 text-[6px] text-[#c6d2f2]/30">
-        {Object.keys(LOCKED_PALETTES).length} PALETTES SOLD IN THE ORB EXCHANGE
+        {Object.keys(LOCKED_PALETTES).length} SHOP PRESETS · CUSTOM COLORS ALWAYS AVAILABLE
       </p>
+    </div>
+  );
+}
+
+export function AbilitySelect({ unlocked, loadout, onToggle, onRankChange, active, focusedId }) {
+  const abilities = Object.keys(ABILITIES).filter((id) => Number(unlocked[id]) > 0);
+
+  return (
+    <div className={`border p-3 transition-colors ${active ? "border-[#4be3ff]/70 bg-[#4be3ff]/[0.06]" : "border-[#2a2f52]"}`}>
+      <div className="flex items-center justify-between">
+        <p className="pa-pixel text-[8px] text-[#c6d2f2]/50">ABILITY LOADOUT</p>
+        <p className="pa-pixel text-[6px] text-[#7af6c8]/70">{loadout.length} EQUIPPED · NO LIMIT</p>
+      </div>
+      {abilities.length ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {abilities.map((id) => {
+            const ability = ABILITIES[id];
+            const unlockedRank = Number(unlocked[id]) || 1;
+            const equippedRank = loadout.find((entry) => entry.id === id)?.rank;
+            return (
+              <div
+                key={id}
+                className={`border bg-black/20 p-2.5 ${
+                  focusedId === id ? "border-[#ffd166]/70" : "border-[#2a2f52]"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="pa-pixel text-[7px] text-white">{ability.name}</p>
+                    <p className="mt-1 text-[10px] leading-snug text-[#c6d2f2]/45">{ability.blurb}</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-pressed={Boolean(equippedRank)}
+                    onClick={() => onToggle(id)}
+                    className={`pa-pixel shrink-0 border px-2 py-1 text-[6px] ${
+                      equippedRank
+                        ? "border-[#7af6c8]/70 bg-[#7af6c8]/10 text-[#7af6c8]"
+                        : "border-[#2a2f52] text-[#c6d2f2]/45 hover:border-[#7af6c8]/60"
+                    }`}
+                  >
+                    {equippedRank ? "EQUIPPED" : "EQUIP"}
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center gap-1.5">
+                  {[1, 2].filter((rank) => rank <= unlockedRank).map((rank) => (
+                    <button
+                      key={rank}
+                      type="button"
+                      aria-pressed={equippedRank === rank}
+                      onClick={() => onRankChange(id, rank)}
+                      className={`pa-pixel border px-2 py-1 text-[6px] ${
+                        equippedRank === rank
+                          ? "border-[#4be3ff] text-[#4be3ff]"
+                          : "border-[#2a2f52] text-[#c6d2f2]/40 hover:text-white"
+                      }`}
+                    >
+                      RANK {rank}
+                    </button>
+                  ))}
+                  {unlockedRank > 1 ? <span className="pa-pixel text-[5px] text-[#ffd166]/60">RANK 2 UNLOCKED</span> : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs tracking-wide text-[#c6d2f2]/40">Select a frame or clear a rift to unlock abilities.</p>
+      )}
     </div>
   );
 }

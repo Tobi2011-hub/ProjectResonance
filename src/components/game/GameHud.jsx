@@ -176,7 +176,7 @@ export default function GameHud({ hud, onReload }) {
         type="button"
         onClick={onReload}
         disabled={!hud.reloadReady}
-        aria-label={`${hud.reloadLabel || "Reload"}${hud.reloadUsed ? ", already used" : ""}`}
+        aria-label={`${hud.reloadLabel || "Reload"}: ${hud.reloadsUsed}/${hud.reloadLimit} used`}
         className={`pointer-events-auto absolute right-2 top-[76px] z-30 flex min-h-8 min-w-[72px] items-center justify-center gap-1 border px-1.5 py-1 backdrop-blur-sm transition-colors sm:right-4 sm:top-[84px] ${
           hud.reloadReady
             ? "border-[#7af6c8]/70 bg-[#07140f]/90 text-[#7af6c8] hover:bg-[#7af6c8]/20"
@@ -185,7 +185,7 @@ export default function GameHud({ hud, onReload }) {
       >
         <RotateCcw className="h-3 w-3" />
         <span className="pa-pixel text-[6px]">{hud.reloadLabel || "RELOAD"}</span>
-        <span className="pa-pixel text-[5px]">{hud.reloadUsed ? "USED" : "R"}</span>
+        <span className="pa-pixel text-[5px]">R{hud.reloadsUsed}/{hud.reloadLimit}</span>
       </button>
 
       <div className="pa-desktop-only absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[#05060d]/90 to-transparent px-3 pb-2 pt-5 sm:block">

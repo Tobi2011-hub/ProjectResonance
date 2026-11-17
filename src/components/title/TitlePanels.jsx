@@ -4,7 +4,7 @@
  * (These were seven separate files; they only appear on the title screen.)
  */
 import { useEffect, useState } from "react";
-import { ChevronRight, Maximize, Play, RotateCcw, Smartphone, Trash2 } from "lucide-react";
+import { ChevronRight, Lock, Maximize, Play, RotateCcw, Smartphone, Trash2 } from "lucide-react";
 import {
   CHARACTERS,
   CONTROL_ROWS,
@@ -65,16 +65,23 @@ export function MenuList({ items, index, onFocus, onSelect }) {
     <div className="pa-panel mt-8 w-full max-w-[430px] px-3 py-3" role="menu" aria-label="Title screen menu">
       {items.map((item, i) => {
         const active = i === index;
+        const disabled = Boolean(item.disabled);
         return (
           <button
             key={item.id}
             type="button"
             role="menuitem"
+            disabled={disabled}
             aria-current={active ? "true" : undefined}
+            aria-disabled={disabled}
             onMouseEnter={() => onFocus(i)}
             onClick={() => onSelect(item.id)}
             className={`group relative flex w-full items-center gap-3 px-3 py-3 text-left transition-all duration-150 ${
-              active ? "pa-focus-row translate-x-1" : "hover:bg-white/[0.03]"
+              disabled
+                ? "cursor-not-allowed opacity-35"
+                : active
+                ? "pa-focus-row translate-x-1"
+                : "hover:bg-white/[0.03]"
             }`}
           >
             <span
@@ -86,7 +93,7 @@ export function MenuList({ items, index, onFocus, onSelect }) {
             </span>
             <span
               className={`pa-pixel flex-1 text-[11px] transition-colors sm:text-[12px] ${
-                active ? "text-white" : "text-[#c6d2f2]/70"
+                disabled ? "text-[#c6d2f2]/30" : active ? "text-white" : "text-[#c6d2f2]/70"
               }`}
             >
               {item.label}
@@ -96,15 +103,37 @@ export function MenuList({ items, index, onFocus, onSelect }) {
                 {item.meta}
               </span>
             ) : null}
-            <ChevronRight
+            {disabled ? <Lock className="h-3 w-3 text-[#c6d2f2]/25" /> : <ChevronRight
               className={`h-4 w-4 transition-all ${
                 active ? "translate-x-0 text-[#4be3ff] opacity-100" : "-translate-x-1 opacity-0"
               }`}
-            />
+            />}
           </button>
         );
       })}
     </div>
+  );
+}
+
+export function LevelSelectPanel({ levels, onSelect, onBack }) {
+  return (
+    <PanelFrame tag="100% COMPLETE" title="LEVEL SELECT" onBack={onBack}>
+      <div className="grid max-h-[60vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+        {levels.map((level) => (
+          <button
+            key={level.id}
+            type="button"
+            onClick={() => onSelect(level.id)}
+            className="border border-[#2a2f52] bg-black/30 p-3 text-left transition-colors hover:border-[#4be3ff]/70 hover:bg-[#4be3ff]/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166]"
+          >
+            <span className="pa-pixel text-[7px] text-[#4be3ff]">
+              {level.id <= 10 ? `STAGE ${String(level.id).padStart(2, "0")}` : `SECRET ${String(level.id).padStart(2, "0")}`}
+            </span>
+            <span className="mt-1 block text-[11px] leading-snug text-white">{level.name}</span>
+          </button>
+        ))}
+      </div>
+    </PanelFrame>
   );
 }
 

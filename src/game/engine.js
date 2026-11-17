@@ -13,6 +13,7 @@ import {
   CHARACTERS,
   Input,
   MAX_HEALTH,
+  PLAYER_DAMAGE_MULTIPLIER,
   SPIKE_DAMAGE,
   START_LIVES,
   STEP,
@@ -26,9 +27,8 @@ import {
   createWorld,
   drawEffects,
   dust as dustFx,
-  isCharacterOwned,
-  isWeaponOwned,
   overlaps,
+  normalizeAbilityLoadout,
   ring,
   sfx,
   shake,
@@ -57,6 +57,7 @@ const NO_HOOKS = {
   onNarrative: () => {},
   onComplete: () => {},
   onStar: () => {},
+  onCoin: () => {},
   onCheckpoint: () => {},
   onOutOfLives: () => {},
 };
@@ -72,20 +73,24 @@ export default class GameEngine {
     this.hooks = { ...NO_HOOKS, ...hooks };
 
     this.world = createWorld(level);
-    this.character = CHARACTERS[save.character] && isCharacterOwned(save, save.character) ? CHARACTERS[save.character] : CHARACTERS[0];
-    this.abilities = { ...(save.abilities || {}) };
-    if (this.character.startingAbility && !Number(this.abilities[this.character.startingAbility])) {
-      this.abilities[this.character.startingAbility] = 1;
-    }
+    this.character = CHARACTERS[save.character] || CHARACTERS[0];
+    this.abilities = Object.fromEntries(
+      normalizeAbilityLoadout(
+        Array.isArray(save.abilityLoadout)
+          ? save.abilityLoadout
+          : Object.entries(save.abilities || {}).map(([id, rank]) => ({ id, rank })),
+        save.abilities || {}
+      ).map(({ id, rank }) => [id, rank])
+    );
 
     // ---- loadout --------------------------------------------------------
     // Same weapon in both slots = dual wield: double fire rate, +30% damage,
-    // half the ammo, and the pilot runs on 600 HP instead of 1000.
-    const primary = WEAPONS[save.primary] && isWeaponOwned(save, save.primary) ? save.primary : "buster";
-    const secondary = WEAPONS[save.secondary] && isWeaponOwned(save, save.secondary) ? save.secondary : "blade";
+    // half the ammo, and the pilot runs on 720 HP instead of 1200.
+    const primary = WEAPONS[save.primary] ? save.primary : "buster";
+    const secondary = WEAPONS[save.secondary] ? save.secondary : "blade";
     this.weapons = [primary, secondary];
     this.dual = primary === secondary;
-    this.damageMult = this.dual ? DUAL.damage : 1;
+    this.damageMult = (this.dual ? DUAL.damage : 1) * PLAYER_DAMAGE_MULTIPLIER;
     this.cooldownMult = this.dual ? 1 / DUAL.fireRate : 1;
     this.maxHealth = this.dual ? DUAL.health : MAX_HEALTH;
 
@@ -99,7 +104,7 @@ export default class GameEngine {
     this.slot = 0;
     this.ammo = {};
     this.ammoFlash = 0;
-    this.reloadUsed = false;
+    this.reloadsUsed = 0;
     [...new Set(this.weapons)].forEach((id) => {
       if (WEAPONS[id]?.maxAmmo) {
         this.ammo[id] = Math.max(1, Math.round(WEAPONS[id].maxAmmo * (this.dual ? DUAL.ammo : 1)));
@@ -203,6 +208,8 @@ export default class GameEngine {
     this.bossShieldAdds = [];
     this.phaseAlertTimer = 0;
     this.bossPlatforms = [];
+    this.bossFruitSpawnTimer = 12;
+    this.bossAmmoSpawnTimer = 18;
     this.doorProgress = 0;
     this.cutsceneTimer = 0;
     this.controlLocked = false;
@@ -253,6 +260,49 @@ export default class GameEngine {
       minX: this.level.boss.minX ?? this.level.door?.x ?? 0,
       maxX: this.level.boss.maxX ?? this.level.width,
     });
+  }
+
+  updateBossPickups(dt) {
+    if (!this.bossTriggered || this.bossDefeated || !this.boss?.active) return;
+
+    const activeFruit = this.fruitEntities.some((fruit) => fruit.bossArena && !fruit.taken);
+    this.bossFruitSpawnTimer -= dt;
+    if (this.bossFruitSpawnTimer <= 0) {
+      if (!activeFruit) {
+        const tx = this.randomBossArenaTile();
+        this.fruitEntities.push({
+          x: tx * TILE + TILE / 2,
+          y: this.boss.groundY - TILE / 2,
+          i: this.fruitEntities.length,
+          taken: false,
+          powerup: randomFruitPowerup(),
+          bossArena: true,
+        });
+      }
+      this.bossFruitSpawnTimer = 12;
+    }
+
+    const activeAmmo = this.ammoEntities.some((crate) => crate.bossArena && !crate.taken);
+    this.bossAmmoSpawnTimer -= dt;
+    if (this.bossAmmoSpawnTimer <= 0) {
+      if (!activeAmmo) {
+        const tx = this.randomBossArenaTile();
+        this.ammoEntities.push({
+          x: tx * TILE + TILE / 2,
+          y: this.boss.groundY - TILE / 2,
+          i: this.ammoEntities.length,
+          taken: false,
+          bossArena: true,
+        });
+      }
+      this.bossAmmoSpawnTimer = 18;
+    }
+  }
+
+  randomBossArenaTile() {
+    const minX = this.level.boss.arenaMinX + 1;
+    const maxX = this.level.boss.arenaMaxX - 2;
+    return minX + Math.floor(Math.random() * (maxX - minX + 1));
   }
 
   start() {
@@ -339,6 +389,7 @@ export default class GameEngine {
       this.updateProjectiles(dt);
       if (this.respawnTimer <= 0) {
         this.respawning = false;
+        this.reloadsUsed = 0;
         const [tx, ty] = this.getSpawnPoint();
         this.player.respawn(tx, ty, true);
         this.enemyBullets = [];
@@ -409,16 +460,6 @@ export default class GameEngine {
       mover.dy = mover.y - prevY;
       this.world.addDynamic({ x: mover.x, y: mover.y, w: mover.w, h: mover.h });
     });
-
-    if (this.bossTriggered && !this.bossDefeated) {
-      const { dropMinX, dropMaxX, dropCeilingY } = this.level.boss;
-      this.world.addDynamic({
-        x: dropMinX * TILE,
-        y: dropCeilingY * TILE,
-        w: (dropMaxX - dropMinX + 1) * TILE,
-        h: 8,
-      });
-    }
 
     if (this.rideIndex !== null && this.movers[this.rideIndex]) {
       const mover = this.movers[this.rideIndex];
@@ -502,7 +543,7 @@ export default class GameEngine {
   }
 
   reloadReady() {
-    if (this.reloadUsed) return false;
+    if (this.reloadsUsed >= this.reloadLimit()) return false;
     if (this.abilities.magnet) {
       return this.player.health < this.maxHealth && Boolean(this.reloadAmmoType());
     }
@@ -510,6 +551,10 @@ export default class GameEngine {
       this.player.health < this.maxHealth ||
       Object.keys(this.ammo).some((id) => this.ammo[id] < Math.round(WEAPONS[id].maxAmmo * (this.dual ? DUAL.ammo : 1)))
     );
+  }
+
+  reloadLimit() {
+    return this.bossTriggered && !this.bossDefeated ? 2 : 1;
   }
 
   useReload() {
@@ -526,7 +571,7 @@ export default class GameEngine {
       });
       this.player.heal(this.maxHealth);
     }
-    this.reloadUsed = true;
+    this.reloadsUsed += 1;
     sfx("checkpoint");
     burst(this.effects, this.player.centerX, this.player.centerY, { count: 16, color: "#7af6c8", speed: 130, life: 0.45 });
     ring(this.effects, this.player.centerX, this.player.centerY, 26, "#7af6c8", 0.35);
@@ -704,8 +749,11 @@ export default class GameEngine {
       bullet.vy += 90 * dt;
       const rect = { x: bullet.x - 5, y: bullet.y - 5, w: 10, h: 10 };
       if (overlaps(rect, this.player) && this.player.invuln <= 0) {
-        this.player.hurt(bullet.damage ?? 2, bullet.x);
-        sfx("hit");
+        if (bullet.bossAttack) this.bossHitPlayer(bullet.damage ?? 2, bullet.x, bullet.x, bullet.y);
+        else {
+          this.player.hurt(bullet.damage ?? 2, bullet.x);
+          sfx("hit");
+        }
         return false;
       }
       if (this.world.solidPx(bullet.x, bullet.y)) return false;
@@ -717,7 +765,7 @@ export default class GameEngine {
       wave.x += wave.dir * 215 * dt;
       const rect = { x: wave.x - 8, y: wave.y - wave.r, w: 16, h: wave.r };
       if (overlaps(rect, this.player) && this.player.invuln <= 0) {
-        this.player.hurt(Math.round(4 * 0.6), wave.x);
+        this.bossHitPlayer(Math.round(4 * 0.6), wave.x, wave.x, wave.y - wave.r / 2);
       }
       if (this.world.solidPx(wave.x, wave.y + 3)) return false;
       return wave.life > 0;
@@ -763,11 +811,29 @@ export default class GameEngine {
   }
 
   hitBoss(x, y) {
-    burst(this.effects, x, y, { count: 8, color: "#fff6c9", speed: 130, life: 0.3 });
-    spark(this.effects, x, y, this.player.facing, { color: "#ffffff", count: 8 });
-    addFlash(this.effects, x, y, 34, "#ffffff");
-    shake(this.effects, 7);
-    this.hitstop = Math.max(this.hitstop, 0.075);
+    if (this.boss) this.boss.hitDirection = Math.sign(this.boss.x + this.boss.w / 2 - x) || 1;
+    burst(this.effects, x, y, { count: 16, color: this.boss?.phaseTwo ? "#ff9f45" : "#fff6c9", speed: 190, life: 0.42 });
+    spark(this.effects, x, y, Math.sign(x - this.player.centerX) || this.player.facing, { color: "#ffffff", count: 12, speed: 280 });
+    ring(this.effects, x, y, 28, this.boss?.phaseTwo ? "#ff9f45" : "#ff3d8b", 0.28);
+    addFlash(this.effects, x, y, 42, "#ffffff");
+    shake(this.effects, 9);
+    this.hitstop = Math.max(this.hitstop, 0.095);
+  }
+
+  bossHitPlayer(amount, fromX, impactX = this.player.centerX, impactY = this.player.centerY) {
+    if (!this.player.hurt(amount, fromX)) return false;
+    burst(this.effects, impactX, impactY, { count: 18, color: "#ff6b6b", speed: 190, life: 0.45 });
+    spark(this.effects, impactX, impactY, Math.sign(this.player.centerX - fromX) || 1, {
+      color: "#ffd0d0",
+      count: 14,
+      speed: 300,
+    });
+    ring(this.effects, impactX, impactY, 34, "#ff3d8b", 0.32);
+    addFlash(this.effects, impactX, impactY, 46, "#ff6b6b");
+    shake(this.effects, 11);
+    this.hitstop = Math.max(this.hitstop, 0.12);
+    sfx("hit");
+    return true;
   }
 
   attractPickup(item, dt) {
@@ -796,6 +862,8 @@ export default class GameEngine {
   }
 
   updateTriggers(dt) {
+    this.updateBossPickups(dt);
+
     this.checkpoints.forEach((cp) => {
       if (cp.active) cp.anim = Math.min(1, cp.anim + dt * 3);
       const rect = { x: cp.x - 22, y: cp.y - 150, w: 44, h: 150 };
@@ -836,6 +904,7 @@ export default class GameEngine {
       if (overlaps({ x: coin.x - 11, y: coin.y - 11, w: 22, h: 22 }, this.player)) {
         coin.taken = true;
         this.coinsTaken += 1;
+        this.hooks.onCoin(coin.i);
         sfx("star");
         burst(this.effects, coin.x, coin.y, { count: 12, color: "#ffd166", speed: 130, life: 0.45 });
         ring(this.effects, coin.x, coin.y, 18, "#ffd166", 0.26);
@@ -982,6 +1051,8 @@ export default class GameEngine {
 
   triggerBoss() {
     this.bossTriggered = true;
+    this.bossFruitSpawnTimer = 12;
+    this.bossAmmoSpawnTimer = 18;
     this.controlLocked = false;
     this.cutsceneTimer = 0;
     this.world.closeDoor();
@@ -1100,7 +1171,7 @@ export default class GameEngine {
   // orbital rain: bolts fall from the ceiling around the player
   fireRain(boss, player) {
     const x = clamp(player.centerX + (Math.random() - 0.5) * 240, 8, this.level.width * TILE - 8);
-    this.enemyBullets.push({ kind: "enemy", x, y: 6, vx: 0, vy: 240, r: 5, life: 5, damage: Math.round(4 * 0.6) });
+    this.enemyBullets.push({ kind: "enemy", bossAttack: true, x, y: 6, vx: 0, vy: 240, r: 5, life: 5, damage: Math.round(4 * 0.6) });
     addFlash(this.effects, x, 10, 18, "#ff9f45");
   }
 
@@ -1111,6 +1182,7 @@ export default class GameEngine {
     const angle = Math.atan2(player.centerY - originY, player.centerX - originX);
     this.enemyBullets.push({
       kind: "enemy",
+      bossAttack: true,
       x: originX,
       y: originY,
       vx: Math.cos(angle) * 265,
@@ -1131,6 +1203,7 @@ export default class GameEngine {
       const a = angle + offset;
       this.enemyBullets.push({
         kind: "enemy",
+        bossAttack: true,
         x: originX,
         y: originY,
         vx: Math.cos(a) * 165,
@@ -1227,7 +1300,8 @@ export default class GameEngine {
       maxAmmo: def.maxAmmo ? Math.round(def.maxAmmo * (this.dual ? DUAL.ammo : 1)) : null,
       ammoEmpty: Boolean(def.maxAmmo) && (this.ammo[weaponType] || 0) <= 0,
       reloadReady: this.reloadReady(),
-      reloadUsed: this.reloadUsed,
+      reloadsUsed: this.reloadsUsed,
+      reloadLimit: this.reloadLimit(),
       reloadSkill: Boolean(this.abilities.magnet),
       reloadLabel: this.abilities.magnet ? "HEAL" : "RELOAD",
       coins: this.coinsTaken,
@@ -1259,7 +1333,8 @@ export default class GameEngine {
       hud.slot,
       hud.ammo,
       hud.reloadReady,
-      hud.reloadUsed,
+      hud.reloadsUsed,
+      hud.reloadLimit,
       hud.coins,
       hud.dashReady,
       Math.round(hud.bossHp),

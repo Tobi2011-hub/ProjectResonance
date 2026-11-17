@@ -16,7 +16,7 @@
  *  Math.round calls is what makes sprites shimmer.
  * ============================================================================
  */
-import { ROWS, TILE, VIEW_H, VIEW_W } from "./core";
+import { COINS_PER_CHALLENGE_STAGE, ROWS, TILE, VIEW_H, VIEW_W } from "./core";
 import { CLOUD_URLS, THEME_CLOUDS } from "./clouds";
 import { TUTORIALS } from "./dialogue";
 import { WEAPONS } from "./weapons";
@@ -132,9 +132,9 @@ function parseHex(hex) {
   return [parseInt(value.slice(0, 2), 16), parseInt(value.slice(2, 4), 16), parseInt(value.slice(4, 6), 16)];
 }
 
-export function tintSprite(img, body, accent, cacheKey) {
+export function tintSprite(img, body, accent, cacheKey, glow = accent) {
   if (!img) return null;
-  const key = `${cacheKey}|${body}|${accent}`;
+  const key = `${cacheKey}|${body}|${accent}|${glow}`;
   if (tintCache.has(key)) return tintCache.get(key);
   const canvas = document.createElement("canvas");
   canvas.width = img.width;
@@ -145,6 +145,7 @@ export function tintSprite(img, body, accent, cacheKey) {
   const px = data.data;
   const bodyRgb = parseHex(body);
   const accentRgb = parseHex(accent);
+  const glowRgb = parseHex(glow);
   for (let i = 0; i < px.length; i += 4) {
     const alpha = px[i + 3];
     if (alpha < 10) continue;
@@ -162,10 +163,14 @@ export function tintSprite(img, body, accent, cacheKey) {
       outB = b * 0.34;
     } else {
       const shade = 0.5 + lum * 0.85;
-      const hi = Math.max(0, (lum - 0.7) / 0.3);
-      outR = bodyRgb[0] * shade * (1 - hi) + accentRgb[0] * hi;
-      outG = bodyRgb[1] * shade * (1 - hi) + accentRgb[1] * hi;
-      outB = bodyRgb[2] * shade * (1 - hi) + accentRgb[2] * hi;
+      const plateMix = Math.min(1, Math.max(0, (lum - 0.38) / 0.44));
+      const glowMix = Math.min(1, Math.max(0, (lum - 0.82) / 0.18));
+      const baseR = bodyRgb[0] * (1 - plateMix) + accentRgb[0] * plateMix;
+      const baseG = bodyRgb[1] * (1 - plateMix) + accentRgb[1] * plateMix;
+      const baseB = bodyRgb[2] * (1 - plateMix) + accentRgb[2] * plateMix;
+      outR = baseR * shade * (1 - glowMix) + glowRgb[0] * glowMix;
+      outG = baseG * shade * (1 - glowMix) + glowRgb[1] * glowMix;
+      outB = baseB * shade * (1 - glowMix) + glowRgb[2] * glowMix;
     }
     px[i] = Math.min(255, outR);
     px[i + 1] = Math.min(255, outG);
@@ -195,7 +200,7 @@ export function drawChar(ctx, assets, prefix, animKey, time, dx, dy, dw, dh, fli
   const anim = sheet.anim;
   const img = assets[sheet.imgKey];
   if (!img) return;
-  const source = tint ? tintSprite(img, tint.body, tint.accent, sheet.imgKey) : img;
+  const source = tint ? tintSprite(img, tint.body, tint.accent, sheet.imgKey, tint.glow) : img;
   const frame = Math.floor(time * anim.fps) % anim.frames;
   drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
 }
@@ -364,7 +369,7 @@ function buildStage(cfg) {
 
   // coin challenge: every coin must be grabbed in one run
   if (cfg.challenge) {
-    const count = 10;
+    const count = COINS_PER_CHALLENGE_STAGE;
     for (let i = 0; i < count; i += 1) {
       const tx = Math.floor((W - 30) * (0.06 + (0.88 * i) / (count - 1)));
       const span = spanAt(tx) || spans[1] || spans[0];
@@ -537,25 +542,10 @@ const SECRETS = [
 ];
 
 const BOSS_ARENA_OFFSET = 260;
+const BOSS_ARENA_FLOOR = [14, 15, 29, 2];
 const BOSS_ARENA = {
   width: 45,
-  platforms: [
-    [0, 15, 5, 2],
-    [6, 13, 3, 1],
-    [10, 11, 3, 1],
-    [12, 9, 2, 1],
-    [10, 7, 3, 1],
-    [12, 5, 5, 1],
-    [18, 7, 6, 1],
-    [14, 15, 29, 2],
-    [16, 13, 3, 1],
-    [19, 11, 3, 1],
-    [22, 9, 2, 1],
-    [29, 13, 3, 1],
-    [32, 11, 3, 1],
-    [35, 9, 3, 1],
-    [38, 7, 3, 1],
-  ],
+  platforms: [BOSS_ARENA_FLOOR],
   checkpoints: [[21, 7]],
   exit: [41, 15],
   boss: {
@@ -568,9 +558,8 @@ const BOSS_ARENA = {
     triggerY: 11,
     dropMinX: 24,
     dropMaxX: 28,
-    dropCeilingY: 7,
     cameraX: 224,
-    collisionPlatforms: [[14, 15, 29, 2]],
+    collisionPlatforms: [BOSS_ARENA_FLOOR],
     grandGem: [29, 14],
   },
 };
@@ -1430,19 +1419,51 @@ export function drawEnemies(ctx, engine) {
 export function drawBoss(ctx, engine) {
   const { boss, assets, camera, time } = engine;
   if (!boss || boss.state === "dead") return;
-  const size = boss.state === "leap" ? 168 : 176;
+  const size = boss.h;
   const dx = Math.round(boss.x + boss.w / 2 - size / 2 - camera.x);
   const dy = Math.round(boss.y + boss.h - size + 6);
 
   const p2 = boss.phaseTwo || boss.phase === 2;
+  const charge = boss.state === "telegraph";
   ctx.save();
-  ctx.globalAlpha = p2 ? 0.55 : 0.35;
+  ctx.globalAlpha = charge ? 0.72 : p2 ? 0.55 : 0.35;
   const aura = ctx.createRadialGradient(dx + size / 2, dy + size / 2, 4, dx + size / 2, dy + size / 2, size * (p2 ? 0.85 : 0.7));
   aura.addColorStop(0, p2 ? "rgba(255,122,61,0.9)" : "rgba(255,61,139,0.8)");
   aura.addColorStop(1, "rgba(255,61,139,0)");
   ctx.fillStyle = aura;
   ctx.fillRect(dx - 24, dy - 24, size + 48, size + 48);
+  if (charge) {
+    ctx.globalAlpha = 0.45 + Math.sin(time * 32) * 0.25;
+    ctx.strokeStyle = p2 ? "#ff9f45" : "#ff3d8b";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(dx + size / 2, dy + size / 2, size * (0.55 + Math.sin(time * 24) * 0.035), 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
+
+  if (charge && boss.next === "dash") {
+    const facing = boss.facing || 1;
+    const startX = dx + size / 2 + facing * size * 0.42;
+    const endX = startX + facing * 104;
+    const groundY = dy + size - 5;
+    ctx.save();
+    ctx.globalAlpha = 0.55 + Math.sin(time * 32) * 0.3;
+    ctx.strokeStyle = p2 ? "#ff9f45" : "#ff3d8b";
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(startX, groundY);
+    ctx.lineTo(endX, groundY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(endX, groundY);
+    ctx.lineTo(endX - facing * 11, groundY - 7);
+    ctx.lineTo(endX - facing * 11, groundY + 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 
   // phase-two halo: a second, rotating ring of shards
   if (p2) {
@@ -1464,22 +1485,35 @@ export function drawBoss(ctx, engine) {
 
   ctx.save();
   if (boss.state === "telegraph") ctx.globalAlpha = 0.65 + Math.sin(time * 40) * 0.35;
-  drawEnemyAnim(ctx, assets, anim, boss.animTime, dx, dy, size, size, boss.facing > 0);
+  if (boss.state === "dash") {
+    ctx.globalAlpha *= 0.18;
+    drawEnemyAnim(ctx, assets, anim, boss.animTime, dx - boss.facing * 20, dy, size, size, boss.facing > 0);
+    ctx.globalAlpha *= 0.45;
+    drawEnemyAnim(ctx, assets, anim, boss.animTime, dx - boss.facing * 10, dy, size, size, boss.facing > 0);
+    ctx.globalAlpha = 1;
+  }
+  const recoil = boss.hitReact > 0 ? boss.hitReact / 0.16 : 0;
+  ctx.translate(dx + size / 2 + boss.hitDirection * recoil * 5, dy + size / 2);
+  ctx.scale(1 + recoil * 0.06, 1 - recoil * 0.1);
+  drawEnemyAnim(ctx, assets, anim, boss.animTime, -size / 2, -size / 2, size, size, boss.facing > 0);
   if (boss.flash > 0) {
     ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.75;
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(dx + 10, dy + 10, size - 20, size - 20);
+    ctx.fillRect(-size / 2 + 10, -size / 2 + 10, size - 20, size - 20);
   }
+  ctx.restore();
+
   if (boss.exoshield) {
+    ctx.save();
     ctx.globalAlpha = 0.65 + Math.sin(time * 9) * 0.2;
     ctx.strokeStyle = "#4be3ff";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.ellipse(dx + size / 2, dy + size / 2, size * 0.6, size * 0.67, time * 0.35, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
   }
-  ctx.restore();
 
   if (boss.active) {
     const barWidth = 76;

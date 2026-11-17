@@ -86,13 +86,24 @@ inline comment:
 | Jump height and forgiveness | `JUMP_V`, `JUMP_CUT`, `COYOTE`, `JUMP_BUFFER` |
 | Dash distance and frequency | `DASH_SPEED`, `DASH_TIME`, `DASH_COOLDOWN` |
 | Wall behaviour | `WALL_SLIDE_SPEED`, `WALL_JUMP_VX`, `WALL_JUMP_VY` |
-| Difficulty | `MAX_HEALTH`, `START_LIVES`, `ENEMY_DAMAGE`, `BOSS_DAMAGE`, `SPIKE_DAMAGE` |
+| Difficulty | `MAX_HEALTH`, `PLAYER_DAMAGE_MULTIPLIER`, `START_LIVES`, `ENEMY_DAMAGE`, `BOSS_DAMAGE`, `SPIKE_DAMAGE` |
 | Resonance shards | `STARS_COLLECTIBLE`, `STARS_TOTAL` (legacy save-compatible names) |
 
 Rule of thumb: higher acceleration and friction = less slippery. Higher gravity
 and lower jump velocity = tighter, heavier platforming.
 
 ## 5. Common changes
+
+**Unlock level select.** Collect all five standard shards in every stage except
+Stage 10, where the Void Core drops one Grand Gem, and collect all 30 hidden
+coins across coin-challenge stages 1, 3 and 5. Coin progress saves per pickup.
+The title-screen Level Select then opens all main and secret stages.
+
+**Customize a loadout.** The title-screen Customization hub saves the selected
+frame, Armor/Plate/Glow colors, primary and secondary weapons, and an
+unrestricted list of equipped abilities. Ability ranks are selected separately;
+rank 2 appears once unlocked. Permanent ranks remain in `save.abilities`, while
+`save.abilityLoadout` controls what the player receives when a stage starts.
 
 **Make a stage longer.** In `world.js`, find the `MAIN` table near the bottom of
 the LEVELS section and raise that stage's `width` (in tiles). More width = more
@@ -109,6 +120,8 @@ Its Phase 2 adds reachable moving spike platforms and an exoshield that stays
 active until its spawned enemies are defeated. The single Grand Gem appears
 only after Phase 2 is defeated; Level 10 has no regular shards or no-death star.
 `BOSS_DAMAGE` in core.js controls how much a touch costs the player.
+Player reloads refresh on each death: one is available per life normally, and
+two are available while the boss encounter is active.
 
 **Change the dialogue.** `TUTORIALS` at the top of the LEVELS section in
 `world.js`. The `{JUMP}`, `{FIRE}`, `{DASH}` and `{SWAP}` placeholders are

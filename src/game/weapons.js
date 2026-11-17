@@ -115,6 +115,6 @@ export const isAmmoWeapon = (id) => Boolean(WEAPONS[id]?.maxAmmo);
 
 /**
  * Same weapon in both slots = DUAL WIELD:
- * double fire rate, +30% damage, half ammo, and the pilot drops to 600 HP.
+ * double fire rate, +30% damage, half ammo, and the pilot drops to 720 HP.
  */
-export const DUAL = { fireRate: 2, damage: 1.3, ammo: 0.5, health: 600 };
+export const DUAL = { fireRate: 2, damage: 1.3, ammo: 0.5, health: 720 };

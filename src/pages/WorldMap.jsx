@@ -103,6 +103,7 @@ export default function WorldMap() {
   const unlocked = isStageUnlocked(save, selected);
   const cleared = Boolean(save?.cleared?.includes(selected));
   const selectedShards = save?.stars?.[selected] || [];
+  const grandGemCollected = Boolean(selectedShards[0]);
   const accent = level?.accent || "#4be3ff";
 
   const deploy = (stage = selected) => {
@@ -362,13 +363,27 @@ export default function WorldMap() {
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="border border-[#2a2f52] bg-[#070a18]/80 p-4">
-                  <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">RESONANCE SHARDS</p>
+                  <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">
+                    {selected === 10 ? "GRAND GEM" : "RESONANCE SHARDS"}
+                  </p>
                   <p className="pa-pixel mt-3 flex items-center gap-2 text-[10px]" style={{ color: accent }}>
                     <Gem className="h-4 w-4 fill-current" />
-                    {selectedShards.slice(0, 5).filter(Boolean).length} / 5 FOUND
+                    {selected === 10
+                      ? grandGemCollected ? "CLAIMED" : "NOT CLAIMED"
+                      : `${selectedShards.slice(0, 5).filter(Boolean).length} / 5 FOUND`}
                   </p>
-                  <div className="mt-3 flex gap-2" aria-label={`${selectedShards.slice(0, 5).filter(Boolean).length} of 5 resonance shards found`}>
-                    {Array.from({ length: 5 }, (_, index) => (
+                  <div
+                    className="mt-3 flex gap-2"
+                    aria-label={selected === 10
+                      ? `Grand gem ${grandGemCollected ? "claimed" : "not claimed"}`
+                      : `${selectedShards.slice(0, 5).filter(Boolean).length} of 5 resonance shards found`}
+                  >
+                    {selected === 10 ? (
+                      <Gem
+                        className={`h-7 w-7 ${grandGemCollected ? "fill-current" : "text-[#2a2f52]"}`}
+                        style={grandGemCollected ? { color: accent } : undefined}
+                      />
+                    ) : Array.from({ length: 5 }, (_, index) => (
                       <Gem
                         key={index}
                         className={`h-5 w-5 ${selectedShards[index] ? "fill-current" : "text-[#2a2f52]"}`}

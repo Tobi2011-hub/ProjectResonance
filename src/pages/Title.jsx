@@ -5,6 +5,7 @@ import { PixelBackdrop } from "@/components/game/GameUI";
 import {
   ConfirmPanel,
   ExitOverlay,
+  LevelSelectPanel,
   MenuList,
   SaveSlotsPanel,
   SettingsPanel,
@@ -18,6 +19,7 @@ import {
   clearSave,
   getActiveSaveSlot,
   listSaveSlots,
+  isLevelSelectUnlocked,
   keyLabel,
   loadSave,
   setActiveSaveSlot as activateSaveSlot,
@@ -26,6 +28,7 @@ import {
   totalStars,
   writeSave,
 } from "@/game/core";
+import { LEVELS } from "@/game/world";
 
 const buildKeyHints = (controls) => {
   const keys = { ...DEFAULT_CONTROLS, ...(controls || {}) };
@@ -48,6 +51,7 @@ export default function Title() {
   const [notice, setNotice] = useState("");
   const [exited, setExited] = useState(false);
   const keyHints = buildKeyHints(save?.settings?.controls);
+  const levelSelectUnlocked = isLevelSelectUnlocked(save);
 
   useEffect(() => {
     setSfxVolume((save?.settings?.sfx ?? 0.7) * (save?.settings?.master ?? 1));
@@ -64,11 +68,18 @@ export default function Title() {
     () => [
       { id: "new", label: "New Game" },
       { id: "continue", label: "Continue", meta: save ? `STAGE ${save.highestStage}` : "" },
+      { id: "customize", label: "Customization", meta: save ? "" : "NO SAVE", disabled: !save },
+      {
+        id: "level-select",
+        label: "Level Select",
+        meta: levelSelectUnlocked ? "100%" : "LOCKED",
+        disabled: !levelSelectUnlocked,
+      },
       { id: "load", label: "Load Game", meta: `${slots.filter((slot) => slot.save).length}/${SAVE_SLOT_COUNT} SLOTS` },
       { id: "settings", label: "Settings" },
       { id: "exit", label: "Exit" },
     ],
-    [save, slots]
+    [save, slots, levelSelectUnlocked]
   );
 
   const openSlots = (mode) => {
@@ -85,6 +96,19 @@ export default function Title() {
     if (id === "continue") {
       if (save) navigate("/world");
       else setNotice("NO SAVE DATA — START A NEW GAME");
+      return;
+    }
+    if (id === "customize") {
+      if (save) navigate("/customize");
+      else setNotice("START A SAVE BEFORE CUSTOMIZING");
+      return;
+    }
+    if (id === "level-select") {
+      if (!levelSelectUnlocked) {
+        setNotice("LOCKED — COLLECT ALL SHARDS AND HIDDEN COINS");
+        return;
+      }
+      setPanel("level-select");
       return;
     }
     if (id === "load") {
@@ -280,6 +304,20 @@ export default function Title() {
                 highContrast: false,
               }}
               onChange={updateSettings}
+              onBack={() => setPanel(null)}
+            />
+          )}
+          {panel === "level-select" && (
+            <LevelSelectPanel
+              levels={LEVELS}
+              onSelect={(stage) => {
+                if (!isLevelSelectUnlocked(loadSave())) {
+                  setPanel(null);
+                  setNotice("LEVEL SELECT REQUIRES 100% COMPLETION");
+                  return;
+                }
+                navigate(`/stage/${stage}`);
+              }}
               onBack={() => setPanel(null)}
             />
           )}
