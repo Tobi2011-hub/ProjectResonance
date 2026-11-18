@@ -46,16 +46,15 @@ export const ENEMY_ANIMS = {
   jump: { frames: 28, fw: 30, fh: 30, fps: 16 },
   hurt: { frames: 9, fw: 55, fh: 80, fps: 14 },
   death: { frames: 20, fw: 40, fh: 50, fps: 16 },
-  attack: { frames: 8, fw: 90, fh: 50, fps: 12 },
 };
 
 export const THEMES = ["blue", "purple", "green", "brown", "gray", "pink", "yellow"];
 
 const CHAR_KEYS = ["idle", "run", "jump", "fall", "hit", "wall", "djump"];
-const ENEMY_KEYS = ["idle", "run", "jump", "hurt", "death", "attack"];
+const ENEMY_KEYS = ["idle", "run", "jump", "hurt", "death"];
 
 /** The fourth character is built from the enemy sheets, so map its poses. */
-const ENEMY_CHAR_ANIM = { idle: "idle", run: "run", jump: "jump", fall: "jump", wall: "idle", hit: "idle", djump: "jump" };
+const ENEMY_CHAR_ANIM = { idle: "idle", run: "run", jump: "jump", fall: "jump", wall: "idle", hit: "hurt", djump: "jump" };
 
 export function sheetFor(prefix, animKey) {
   if (prefix === "en") {
@@ -183,14 +182,19 @@ export function tintSprite(img, body, accent, cacheKey, glow = accent) {
 
 export function drawFrame(ctx, img, fw, fh, frame, dx, dy, dw, dh, flip = false) {
   if (!img) return;
-  const sx = (frame % Math.max(1, Math.floor(img.width / fw))) * fw;
+  const columns = Math.max(1, Math.floor(img.width / fw));
+  const rows = Math.max(1, Math.floor(img.height / fh));
+  const frameCount = columns * rows;
+  const safeFrame = Math.max(0, Math.min(Math.floor(frame), frameCount - 1));
+  const sx = (safeFrame % columns) * fw;
+  const sy = Math.floor(safeFrame / columns) * fh;
   ctx.save();
   if (flip) {
     ctx.translate(dx + dw / 2, dy);
     ctx.scale(-1, 1);
-    ctx.drawImage(img, sx, 0, fw, fh, -dw / 2, 0, dw, dh);
+    ctx.drawImage(img, sx, sy, fw, fh, -dw / 2, 0, dw, dh);
   } else {
-    ctx.drawImage(img, sx, 0, fw, fh, dx, dy, dw, dh);
+    ctx.drawImage(img, sx, sy, fw, fh, dx, dy, dw, dh);
   }
   ctx.restore();
 }
@@ -201,7 +205,8 @@ export function drawChar(ctx, assets, prefix, animKey, time, dx, dy, dw, dh, fli
   const img = assets[sheet.imgKey];
   if (!img) return;
   const source = tint ? tintSprite(img, tint.body, tint.accent, sheet.imgKey, tint.glow) : img;
-  const frame = Math.floor(time * anim.fps) % anim.frames;
+  const availableFrames = Math.max(1, Math.floor(img.width / anim.fw) * Math.floor(img.height / anim.fh));
+  const frame = Math.floor(time * anim.fps) % Math.min(anim.frames, availableFrames);
   drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
 }
 
@@ -209,7 +214,8 @@ export function drawEnemyAnim(ctx, assets, animKey, time, dx, dy, dw, dh, flip =
   const anim = ENEMY_ANIMS[animKey] || ENEMY_ANIMS.idle;
   const img = assets[`enemy_${animKey}`];
   if (!img) return;
-  const frame = Math.floor(time * anim.fps) % anim.frames;
+  const availableFrames = Math.max(1, Math.floor(img.width / anim.fw) * Math.floor(img.height / anim.fh));
+  const frame = Math.floor(time * anim.fps) % Math.min(anim.frames, availableFrames);
   const source = tint ? tintSprite(img, tint.body, tint.accent, `enemy_${animKey}`) : img;
   drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
 }
@@ -1356,7 +1362,10 @@ export function drawEnemies(ctx, engine) {
       ctx.globalAlpha = Math.max(0, 1 - enemy.deathTimer / 0.7);
       drawEnemyAnim(ctx, assets, "death", enemy.deathTimer, dx - 5, dy - 12, size + 10, size + 14, enemy.dir < 0, enemy.variantStyle);
     } else {
-      drawEnemyAnim(ctx, assets, enemy.onGround ? "run" : "jump", enemy.animTime, dx, dy, size, size, enemy.dir < 0, enemy.variantStyle);
+      const enemyAnim = enemy.flash > 0 || enemy.hitStun > 0
+        ? "hurt"
+        : enemy.onGround ? "run" : "jump";
+      drawEnemyAnim(ctx, assets, enemyAnim, enemy.animTime, dx, dy, size, size, enemy.dir < 0, enemy.variantStyle);
     }
     if (enemy.invulnerable) {
       ctx.globalAlpha = 0.78 + Math.sin(enemy.animTime * 12) * 0.18;
@@ -1480,7 +1489,8 @@ export function drawBoss(ctx, engine) {
   }
 
   let anim = "idle";
-  if (boss.state === "dash" || boss.state === "spread") anim = "attack";
+  if (boss.hitReact > 0) anim = "hurt";
+  if (boss.state === "dash" || boss.state === "spread") anim = "run";
   if (boss.state === "leap" || !boss.onGround) anim = "jump";
 
   ctx.save();

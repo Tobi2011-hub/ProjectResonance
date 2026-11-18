@@ -21,6 +21,7 @@ import {
   createDefaultSave,
   loadSave,
   normalizeAbilityLoadout,
+  isWeaponOwned,
   sfx,
   writeSave,
 } from "@/game/core";
@@ -76,6 +77,10 @@ export default function Customize() {
   }, [notice]);
 
   const chooseCharacter = (index) => {
+    if (isExistingSave) {
+      setNotice("CHARACTER LOCKED ON THIS SAVE — START A NEW SAVE TO CHANGE FRAME");
+      return;
+    }
     setCharacter(index);
     setPalettePick(0);
     setAbilityCursor(0);
@@ -112,8 +117,9 @@ export default function Customize() {
       setArmor({ body: palettes[next].body, accent: palettes[next].accent, glow: palettes[next].glow });
     };
     const pickWeapon = (current, setter, dir) => {
-      const idx = WEAPON_ORDER.indexOf(current);
-      setter(WEAPON_ORDER[(idx + dir + WEAPON_ORDER.length) % WEAPON_ORDER.length]);
+      const available = WEAPON_ORDER.filter((id) => isWeaponOwned(save, id));
+      const idx = available.indexOf(current);
+      setter(available[(idx + dir + available.length) % available.length]);
     };
     const toggleAbility = (id) => {
       setAbilityLoadout((current) =>
@@ -126,6 +132,10 @@ export default function Customize() {
     const cycle = (dir) => {
       const row = ROWS[focus];
       if (row === "character") {
+        if (isExistingSave) {
+          setNotice("CHARACTER LOCKED ON THIS SAVE — START A NEW SAVE TO CHANGE FRAME");
+          return;
+        }
         chooseCharacter((character + dir + CHARACTERS.length) % CHARACTERS.length);
       } else if (row === "armor") pickPalette(dir);
       else if (row === "primary") pickWeapon(primary, setPrimary, dir);
@@ -180,6 +190,10 @@ export default function Customize() {
 
   const handleWeapon = (id, setter) => {
     sfx("move");
+    if (!isWeaponOwned(save, id)) {
+      setNotice("LOCKED WEAPON · BUY IT IN THE SHOP");
+      return;
+    }
     setter(id);
   };
 
@@ -257,6 +271,7 @@ export default function Customize() {
               active={ROWS[focus] === "primary"}
               types={WEAPON_TYPES}
               order={WEAPON_ORDER}
+              lockedIds={WEAPON_ORDER.filter((id) => !isWeaponOwned(save, id))}
             />
             <WeaponSelect
               title="SECONDARY WEAPON"
@@ -265,6 +280,7 @@ export default function Customize() {
               active={ROWS[focus] === "secondary"}
               types={WEAPON_TYPES}
               order={WEAPON_ORDER}
+              lockedIds={WEAPON_ORDER.filter((id) => !isWeaponOwned(save, id))}
             />
 
             <div className="sm:col-span-2">

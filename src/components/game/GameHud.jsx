@@ -10,11 +10,14 @@ function Pip({ on, className = "" }) {
   return <span className={`h-1.5 w-3 ${on ? "bg-[#4be3ff]" : "bg-white/15"} ${className}`} />;
 }
 
-export default function GameHud({ hud, onReload }) {
+export default function GameHud({ hud, onReload, timer, score, retryGems = 0, isLevelSelect, arcade = false }) {
   if (!hud) return null;
   const healthPct = Math.max(0, Math.min(1, hud.health / hud.maxHealth));
   const bossPct = hud.bossMax ? Math.max(0, Math.min(1, hud.bossHp / hud.bossMax)) : 0;
   const ammoPct = hud.maxAmmo ? Math.max(0, Math.min(1, (hud.ammo || 0) / hud.maxAmmo)) : 0;
+  const timerMinutes = Math.floor(timer / 60);
+  const timerSeconds = timer % 60;
+  const timerText = `${String(timerMinutes).padStart(2, "0")}:${String(timerSeconds).padStart(2, "0")}`;
 
   return (
     <div className="pointer-events-none absolute inset-0 select-none">
@@ -160,6 +163,14 @@ export default function GameHud({ hud, onReload }) {
                 ))}
               </div>
             ) : null}
+            {arcade ? (
+              <div className="mt-2 grid grid-cols-2 gap-1 border border-[#ffd166]/30 bg-[#100d08]/85 px-2 py-1.5 text-right">
+                <span className="pa-pixel text-[6px] text-[#ffd166]/65">SCORE</span>
+                <span className="pa-pixel text-[8px] font-mono text-[#ffd166]">{score}</span>
+                <span className="pa-pixel text-[6px] text-[#ffd166]/65">RETRY GEMS</span>
+                <span className="pa-pixel text-[8px] font-mono text-[#ffd166]">{retryGems}</span>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -242,6 +253,18 @@ export default function GameHud({ hud, onReload }) {
             <Gem className="h-2.5 w-2.5 text-[#ffd166]/60" />
             <span className="pa-pixel text-[5px] text-[#c6d2f2]/25">PROJECT: RESONANCE</span>
           </div>
+          {isLevelSelect ? (
+            <div className="ml-6 flex items-center gap-3 border-l border-white/10 pl-4">
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="pa-pixel text-[5px] text-[#ffd166]/70">TIME</span>
+                <span className={`pa-pixel text-[9px] font-mono text-[#4be3ff] pa-blink`}>{timerText}</span>
+              </div>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="pa-pixel text-[5px] text-[#ffd166]/70">SCORE</span>
+                <span className={`pa-pixel text-[9px] font-mono text-[#ffd166]`}>{score}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

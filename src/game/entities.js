@@ -396,7 +396,7 @@ export function drawExplosion(ctx, explosion, camX, camY) {
 const AIR_FRICTION = 900;
 
 export class Player {
-  constructor(tx, ty, { character = "vg", armor, abilities = {}, maxHealth = MAX_HEALTH } = {}) {
+  constructor(tx, ty, { character = "vg", armor, abilities = {}, maxHealth = MAX_HEALTH, challenge = null } = {}) {
     this.w = PLAYER_W;
     this.h = PLAYER_H;
     this.maxHealth = maxHealth;
@@ -427,9 +427,11 @@ export class Player {
     this.dead = false;
     this.anim = "idle";
     this.animTime = 0;
+    this.extraJumpActive = false;
     this.character = character;
     this.armor = armor;
     this.abilities = { ...abilities };
+    this.challenge = challenge;
     this.maxExtraJumps = Number(this.abilities.leap) >= 2 ? 2 : 1;
     this.extraJumps = this.maxExtraJumps;
     this.dashVertical = 0;
@@ -487,7 +489,7 @@ export class Player {
     const moveDir = (right ? 1 : 0) - (left ? 1 : 0);
     const jumpHeld = input.isDown("jump");
     const glideFloat = !this.onGround && this.vy > 0 && jumpHeld && Number(this.abilities.glide) >= 2;
-    const runScale = this.speedBoost || 1;
+    const runScale = (this.speedBoost || 1) * (this.challenge?.speed || 1);
 
     const walls = this.probeWalls(world);
     this.wallDir = walls.leftSolid ? -1 : walls.rightSolid ? 1 : 0;
@@ -500,7 +502,7 @@ export class Player {
           ? 1
           : 0
         : 0;
-    if (input.wasPressed("dash") && this.dashCd <= 0 && this.dashTime <= 0 && (this.onGround || this.airDashes > 0)) {
+    if (!this.challenge?.disableDash && input.wasPressed("dash") && this.dashCd <= 0 && this.dashTime <= 0 && (this.onGround || this.airDashes > 0)) {
       if (!this.onGround) this.airDashes -= 1;
       this.dashTime = DASH_TIME;
       this.dashCd = this.onGround ? DASH_COOLDOWN : DASH_COOLDOWN + 0.16;
@@ -569,6 +571,7 @@ export class Player {
         this.coyote = 0;
         this.jumpBuffer = 0;
         this.extraJumps = this.maxExtraJumps;
+        this.extraJumpActive = false;
         sfx("jump");
       } else if (this.wallDir !== 0) {
         this.vy = WALL_JUMP_VY;
@@ -577,12 +580,14 @@ export class Player {
         this.lockTime = 0.14;
         this.jumpBuffer = 0;
         this.extraJumps = this.maxExtraJumps;
+        this.extraJumpActive = false;
         sfx("walljump");
         if (engine?.effects) engine.effects.wallKick = 0.2;
       } else if (this.abilities.leap && this.extraJumps > 0) {
         this.extraJumps -= 1;
         this.vy = JUMP_V * 0.92;
         this.jumpBuffer = 0;
+        this.extraJumpActive = true;
         sfx("walljump");
         if (engine?.effects) {
           engine.effects.wallKick = 0.16;
@@ -634,6 +639,7 @@ export class Player {
       this.coyote = COYOTE;
       this.airDashes = 1;
       this.extraJumps = this.maxExtraJumps;
+      this.extraJumpActive = false;
       if (!wasGrounded && engine?.effects) engine.effects.landed = Math.min(1, Math.abs(impact) / 420);
     } else if (hitY === "ceiling") {
       this.vy = 40;
@@ -653,6 +659,7 @@ export class Player {
     else if (!this.onGround) {
       if (this.wallSliding) next = "wall";
       else if (this.gliding) next = "fall";
+      else if (this.extraJumpActive && this.vy < 0) next = "djump";
       else next = this.vy < 0 ? "jump" : "fall";
     } else if (Math.abs(this.vx) > 12) next = "run";
     if (next !== this.anim) {
@@ -736,6 +743,7 @@ export class Player {
     this.extraJumps = this.maxExtraJumps;
     if (fullHealth) this.health = this.maxHealth;
     this.anim = "idle";
+    this.extraJumpActive = false;
   }
 }
 

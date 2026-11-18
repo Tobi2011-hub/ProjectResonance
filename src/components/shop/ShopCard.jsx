@@ -17,7 +17,7 @@ export default function ShopCard({ item, orbs, onBuy }) {
         <div className="min-w-0 flex-1">
           <p className="pa-pixel text-[8px] text-white">{item.name.toUpperCase()}</p>
           <p className="pa-pixel mt-1 text-[6px] text-[#4be3ff]/70">
-            {item.kind === "character" ? "PLAYABLE FRAME" : "ARMOR PALETTE"}
+            {item.kind === "character" ? "PLAYABLE FRAME" : item.kind === "weapon" ? "WEAPON SYSTEM" : "ARMOR PALETTE"}
           </p>
           <p className="mt-2 text-[11px] leading-snug tracking-wide text-[#c6d2f2]/50">{item.description}</p>
         </div>

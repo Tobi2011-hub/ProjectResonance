@@ -6,7 +6,6 @@ import PixelFontText from "@/components/game/PixelFontText";
 import { LEVELS } from "@/game/world";
 import {
   ABILITIES,
-  CHALLENGE_WEAPONS,
   CHARACTERS,
   MAX_STARS,
   SECRET_ABILITIES,
@@ -155,7 +154,7 @@ export default function WorldMap() {
 
   return (
     <div className="pa-root pa-world-map relative h-screen h-dvh overflow-hidden">
-      <PixelBackdrop />
+      <PixelBackdrop theme={save?.settings?.backgrounds?.map} />
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col px-2 py-1.5 sm:px-8 sm:py-3">
         <header className="flex shrink-0 flex-col items-stretch gap-1.5 border-b border-white/[0.06] pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           <button
@@ -250,7 +249,7 @@ export default function WorldMap() {
                 <span className="world-map__stage-meta">Secondary {WEAPON_TYPES[save.secondary]?.name}</span>
                 {level.challenge ? (
                   <span className="world-map__stage-meta text-[#ffd166]">
-                    COIN CHALLENGE — 10/10 UNLOCKS {WEAPON_TYPES[CHALLENGE_WEAPONS[level.id]]?.name?.toUpperCase()}
+                    COIN CHALLENGE — ALL 10 GRANT BONUS ORBS
                   </span>
                 ) : null}
               </div>
@@ -406,7 +405,7 @@ export default function WorldMap() {
 
               {level.challenge ? (
                 <p className="pa-pixel mt-4 border border-[#ffd166]/25 bg-[#ffd166]/[0.04] p-3 text-[7px] leading-relaxed text-[#ffd166]">
-                  COIN CHALLENGE · COLLECT EVERY COIN IN ONE RUN TO UNLOCK {WEAPON_TYPES[CHALLENGE_WEAPONS[selected]]?.name?.toUpperCase()}
+                  COIN CHALLENGE · COLLECT EVERY COIN IN ONE RUN FOR EXTRA ORBS
                 </p>
               ) : null}
               {!unlocked ? (

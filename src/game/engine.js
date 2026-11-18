@@ -63,12 +63,15 @@ const NO_HOOKS = {
 };
 
 export default class GameEngine {
-  constructor({ canvas, level, assets, save, hooks }) {
+  constructor({ canvas, level, assets, save, hooks, challenge = null, arcade = false, arcadeState = null }) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.level = level;
     this.assets = assets;
     this.save = save;
+    this.challenge = challenge;
+    this.arcade = arcade;
+    this.arcadeState = arcadeState;
     this.settings = save.settings || {};
     this.hooks = { ...NO_HOOKS, ...hooks };
 
@@ -80,26 +83,31 @@ export default class GameEngine {
           ? save.abilityLoadout
           : Object.entries(save.abilities || {}).map(([id, rank]) => ({ id, rank })),
         save.abilities || {}
-      ).map(({ id, rank }) => [id, rank])
+      ).filter(() => !challenge?.noAbilities).map(({ id, rank }) => [id, rank])
     );
 
     // ---- loadout --------------------------------------------------------
     // Same weapon in both slots = dual wield: double fire rate, +30% damage,
     // half the ammo, and the pilot runs on 720 HP instead of 1200.
-    const primary = WEAPONS[save.primary] ? save.primary : "buster";
-    const secondary = WEAPONS[save.secondary] ? save.secondary : "blade";
+    const primary = WEAPONS[challenge?.weapons?.[0]] ? challenge.weapons[0] : WEAPONS[save.primary] ? save.primary : "buster";
+    const secondary = WEAPONS[challenge?.weapons?.[1]] ? challenge.weapons[1] : WEAPONS[save.secondary] ? save.secondary : "blade";
     this.weapons = [primary, secondary];
     this.dual = primary === secondary;
-    this.damageMult = (this.dual ? DUAL.damage : 1) * PLAYER_DAMAGE_MULTIPLIER;
-    this.cooldownMult = this.dual ? 1 / DUAL.fireRate : 1;
+    this.damageMult = (this.dual ? DUAL.damage : 1) * PLAYER_DAMAGE_MULTIPLIER * (challenge?.damage ?? 1);
+    this.cooldownMult = (this.dual ? 1 / DUAL.fireRate : 1) * (challenge?.cooldown || 1);
     this.maxHealth = this.dual ? DUAL.health : MAX_HEALTH;
+    if (challenge) this.maxHealth = Math.round(this.maxHealth * (challenge.health || 1));
+    this.baseDamageMult = this.damageMult;
+    this.offscreenTime = 0;
 
     this.player = new Player(level.spawn[0], level.spawn[1], {
       character: this.character.prefix,
       armor: save.armor,
       abilities: this.abilities,
       maxHealth: this.maxHealth,
+      challenge,
     });
+    if (arcadeState?.health > 0) this.player.health = Math.min(this.maxHealth, arcadeState.health);
 
     this.slot = 0;
     this.ammo = {};
@@ -107,11 +115,14 @@ export default class GameEngine {
     this.reloadsUsed = 0;
     [...new Set(this.weapons)].forEach((id) => {
       if (WEAPONS[id]?.maxAmmo) {
-        this.ammo[id] = Math.max(1, Math.round(WEAPONS[id].maxAmmo * (this.dual ? DUAL.ammo : 1)));
+        this.ammo[id] = this.ammoMax(id);
       }
     });
+    if (arcade && arcadeState?.ammo) Object.keys(this.ammo).forEach((id) => {
+      this.ammo[id] = Math.min(this.ammoMax(id), Math.max(0, Number(arcadeState.ammo[id]) || 0));
+    });
 
-    const starState = save.stars?.[level.id] || [];
+    const starState = challenge || arcade ? [] : save.stars?.[level.id] || [];
     this.stars = Array.from({ length: 6 }, (_, i) => Boolean(starState[i]) && (level.id !== 10 || i === 0));
     this.runShards = [false, false, false, false, false];
     this.shardEntities = level.stars.map(([x, y], i) => ({
@@ -121,7 +132,7 @@ export default class GameEngine {
       taken: false,
       bob: i * 1.7,
     }));
-    const grandGemPosition = level.boss?.grandGem;
+    const grandGemPosition = arcade ? null : level.boss?.grandGem;
     this.grandGem = grandGemPosition
       ? { x: grandGemPosition[0] * TILE + 8, y: grandGemPosition[1] * TILE + 8, visible: false, taken: false }
       : null;
@@ -148,11 +159,11 @@ export default class GameEngine {
       powerup: randomFruitPowerup(),
     }));
 
-    this.lives = START_LIVES;
+    this.lives = arcade ? 1 : START_LIVES;
     this.deaths = 0;
     this.hitstop = 0;
 
-    this.checkpointIndex = save.checkpoint?.stage === level.id ? save.checkpoint.index || 0 : 0;
+    this.checkpointIndex = !arcade && save.checkpoint?.stage === level.id ? save.checkpoint.index || 0 : 0;
     this.checkpoints = level.checkpoints.map(([x, y], i) => ({
       x: x * TILE,
       y: y * TILE,
@@ -199,6 +210,11 @@ export default class GameEngine {
     this.enemies = (level.enemies || []).map(
       (enemy) => new Enemy(enemy.x, enemy.y, enemy.minX, enemy.maxX, enemy.variant)
     );
+    if (challenge) this.enemies.forEach((enemy) => {
+      enemy.speed *= challenge.enemy;
+      enemy.hp = Math.ceil(enemy.hp * challenge.enemy);
+      enemy.maxHp = enemy.hp;
+    });
     this.boss = level.boss ? this.createBoss() : null;
     this.bossWorld = level.boss?.collisionPlatforms
       ? createWorld({ ...level, platforms: level.boss.collisionPlatforms })
@@ -263,7 +279,7 @@ export default class GameEngine {
   }
 
   updateBossPickups(dt) {
-    if (!this.bossTriggered || this.bossDefeated || !this.boss?.active) return;
+    if (this.arcade || !this.bossTriggered || this.bossDefeated || !this.boss?.active) return;
 
     const activeFruit = this.fruitEntities.some((fruit) => fruit.bossArena && !fruit.taken);
     this.bossFruitSpawnTimer -= dt;
@@ -490,8 +506,8 @@ export default class GameEngine {
 
   updateCombat(dt) {
     if (this.player.fireCd > 0) this.player.fireCd -= dt;
-    if (this.input.wasPressed("reload") && !this.controlLocked) this.useReload();
-    if (this.input.wasPressed("swap")) {
+    if (this.input.wasPressed("reload") && !this.controlLocked && !this.challenge?.disableReload) this.useReload();
+    if (this.input.wasPressed("swap") && !this.challenge?.disableSwap) {
       this.slot = this.slot === 0 ? 1 : 0;
       sfx("move");
       this.pushHud(true);
@@ -542,14 +558,19 @@ export default class GameEngine {
     return [...new Set(this.weapons)].find((id) => WEAPONS[id]?.maxAmmo && (this.ammo[id] || 0) > 0) || null;
   }
 
+  ammoMax(id) {
+    return Math.max(1, Math.round((WEAPONS[id]?.maxAmmo || 0) * (this.dual ? DUAL.ammo : 1) * (this.challenge?.ammo || 1)));
+  }
+
   reloadReady() {
+    if (this.arcade || this.challenge?.disableReload) return false;
     if (this.reloadsUsed >= this.reloadLimit()) return false;
     if (this.abilities.magnet) {
       return this.player.health < this.maxHealth && Boolean(this.reloadAmmoType());
     }
     return (
       this.player.health < this.maxHealth ||
-      Object.keys(this.ammo).some((id) => this.ammo[id] < Math.round(WEAPONS[id].maxAmmo * (this.dual ? DUAL.ammo : 1)))
+      Object.keys(this.ammo).some((id) => this.ammo[id] < this.ammoMax(id))
     );
   }
 
@@ -558,6 +579,7 @@ export default class GameEngine {
   }
 
   useReload() {
+    if (this.arcade || this.challenge?.disableReload) return false;
     if (!this.reloadReady()) return false;
     if (this.abilities.magnet) {
       const ammoType = this.reloadAmmoType();
@@ -567,7 +589,7 @@ export default class GameEngine {
       this.player.heal(this.maxHealth * 0.25);
     } else {
       Object.keys(this.ammo).forEach((id) => {
-        this.ammo[id] = Math.round(WEAPONS[id].maxAmmo * (this.dual ? DUAL.ammo : 1));
+        this.ammo[id] = this.ammoMax(id);
       });
       this.player.heal(this.maxHealth);
     }
@@ -581,9 +603,10 @@ export default class GameEngine {
 
   /** Enemy kills top the current belt back up so long stages stay playable. */
   refundAmmo(amount, type = this.weapons[this.slot]) {
+    if (this.arcade) return;
     const def = WEAPONS[type];
     if (!def?.maxAmmo) return;
-    const max = Math.round(def.maxAmmo * (this.dual ? DUAL.ammo : 1));
+    const max = this.ammoMax(type);
     this.ammo[type] = Math.min(max, (this.ammo[type] || 0) + amount);
     this.pushHud(true);
   }
@@ -751,7 +774,7 @@ export default class GameEngine {
       if (overlaps(rect, this.player) && this.player.invuln <= 0) {
         if (bullet.bossAttack) this.bossHitPlayer(bullet.damage ?? 2, bullet.x, bullet.x, bullet.y);
         else {
-          this.player.hurt(bullet.damage ?? 2, bullet.x);
+          this.player.hurt((bullet.damage ?? 2) * (this.challenge?.incoming || 1), bullet.x);
           sfx("hit");
         }
         return false;
@@ -804,6 +827,7 @@ export default class GameEngine {
       shake(this.effects, 4);
       ring(this.effects, impactX, impactY, 18, "#7af6c8", 0.28);
       this.refundAmmo(2);
+      this.hooks.onScore(this.arcade ? 500 : 100);
     } else {
       sfx("hit");
       shake(this.effects, 2.5);
@@ -821,7 +845,7 @@ export default class GameEngine {
   }
 
   bossHitPlayer(amount, fromX, impactX = this.player.centerX, impactY = this.player.centerY) {
-    if (!this.player.hurt(amount, fromX)) return false;
+    if (!this.player.hurt(amount * (this.challenge?.incoming || 1), fromX)) return false;
     burst(this.effects, impactX, impactY, { count: 18, color: "#ff6b6b", speed: 190, life: 0.45 });
     spark(this.effects, impactX, impactY, Math.sign(this.player.centerX - fromX) || 1, {
       color: "#ffd0d0",
@@ -918,7 +942,7 @@ export default class GameEngine {
       if (overlaps({ x: crate.x - 11, y: crate.y - 17, w: 22, h: 20 }, this.player)) {
         crate.taken = true;
         Object.keys(this.ammo).forEach((id) => {
-          const max = Math.round(WEAPONS[id].maxAmmo * (this.dual ? DUAL.ammo : 1));
+          const max = this.ammoMax(id);
           this.ammo[id] = Math.min(max, this.ammo[id] + Math.round(max * 0.5));
         });
         sfx("checkpoint");
@@ -963,7 +987,7 @@ export default class GameEngine {
       if (this.player.invuln > 0) return;
       const rect = { x: saw.cx - saw.r * 0.6, y: saw.cy - saw.r * 0.6, w: saw.r * 1.2, h: saw.r * 1.2 };
       if (overlaps(rect, this.player)) {
-        this.player.hurt(SPIKE_DAMAGE, saw.cx);
+        this.player.hurt(SPIKE_DAMAGE * (this.challenge?.incoming || 1), saw.cx);
         shake(this.effects, 5);
         spark(this.effects, this.player.centerX, this.player.centerY, -this.player.facing, { color: "#ff6b6b", count: 10 });
       }
@@ -1004,7 +1028,7 @@ export default class GameEngine {
   }
 
   hurtBySpike() {
-    const dealt = this.player.hurt(SPIKE_DAMAGE, this.player.centerX - 1);
+    const dealt = this.player.hurt(SPIKE_DAMAGE * (this.challenge?.incoming || 1), this.player.centerX - 1);
     if (!dealt) return;
     shake(this.effects, 5);
     spark(this.effects, this.player.centerX, this.player.y + this.player.h, -this.player.facing, { color: "#ff6b6b", count: 12 });
@@ -1088,6 +1112,7 @@ export default class GameEngine {
   onBossDefeated() {
     if (this.bossDefeated) return;
     this.bossDefeated = true;
+    if (this.arcade) this.hooks.onScore(500);
     if (this.grandGem) this.grandGem.visible = true;
     this.exitActive = true;
     this.world.openDoor();
@@ -1247,6 +1272,8 @@ export default class GameEngine {
       lives: this.lives,
       coins: this.coinsTaken,
       coinsTotal: this.coinsTotal,
+      health: this.player.health,
+      ammo: { ...this.ammo },
     });
   }
 
@@ -1261,6 +1288,7 @@ export default class GameEngine {
   updateCamera(dt) {
     if (this.camera.locked) {
       this.camera.x += (this.camera.target - this.camera.x) * Math.min(1, dt * 6);
+      this.updateVisibilityDamage(dt);
       return;
     }
     const lookahead = this.player.facing * 26;
@@ -1272,10 +1300,24 @@ export default class GameEngine {
     const diff = target - this.camera.x;
     if (Math.abs(diff) < 0.6) {
       this.camera.x = target;
+      this.updateVisibilityDamage(dt);
       return;
     }
     const speed = Math.abs(diff) > 90 ? 16 : 9;
     this.camera.x += diff * Math.min(1, dt * speed);
+    this.updateVisibilityDamage(dt);
+  }
+
+  updateVisibilityDamage(dt) {
+    const screenX = this.player.centerX - this.camera.x;
+    const screenY = this.player.centerY - this.camera.y;
+    if (screenX < 8 || screenX > VIEW_W - 8 || screenY < 8 || screenY > VIEW_H - 8) {
+      this.offscreenTime += dt;
+      if (this.offscreenTime > 1) this.damageMult = Math.max(this.baseDamageMult * 0.25, this.damageMult - dt * this.baseDamageMult * 0.08);
+    } else {
+      this.offscreenTime = Math.max(0, this.offscreenTime - dt * 2);
+      this.damageMult = Math.min(this.baseDamageMult, this.damageMult + dt * this.baseDamageMult * 0.03);
+    }
   }
 
   buildHud() {
@@ -1297,7 +1339,7 @@ export default class GameEngine {
       weapons: [...this.weapons],
       dual: this.dual,
       ammo: def.maxAmmo ? this.ammo[weaponType] : null,
-      maxAmmo: def.maxAmmo ? Math.round(def.maxAmmo * (this.dual ? DUAL.ammo : 1)) : null,
+      maxAmmo: def.maxAmmo ? this.ammoMax(weaponType) : null,
       ammoEmpty: Boolean(def.maxAmmo) && (this.ammo[weaponType] || 0) <= 0,
       reloadReady: this.reloadReady(),
       reloadsUsed: this.reloadsUsed,

@@ -252,7 +252,7 @@ export function WeaponSelect({ title, value, onChange, active, types, order, loc
               </span>
               {locked ? (
                 <span className="pa-pixel flex shrink-0 items-center gap-1 text-[6px] text-[#ffd166]">
-                  <Lock className="h-2.5 w-2.5" /> STAGE {type.unlock}
+                  <Lock className="h-2.5 w-2.5" /> SHOP
                 </span>
               ) : null}
             </button>

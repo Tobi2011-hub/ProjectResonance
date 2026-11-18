@@ -4,7 +4,7 @@
  * All purchases are written straight into the save file.
  */
 import { ARMOR_PALETTES, LOCKED_CHARACTERS, LOCKED_PALETTES } from "./palettes";
-import { CHARACTERS, isCharacterOwned, loadSave, writeSave } from "./core";
+import { CHARACTERS, WEAPONS, isCharacterOwned, isWeaponOwned, loadSave, writeSave } from "./core";
 
 export const ORBS_PER_STAGE = 40;
 export const ORBS_PER_SECRET = 80;
@@ -42,7 +42,13 @@ export function buildShop(save) {
     };
   });
 
-  return [...characters, ...palettes];
+  const weapons = ["rail", "seeker", "lance"].map((id, index) => ({
+    id: `weapon-${id}`, kind: "weapon", value: id, name: WEAPONS[id].name,
+    description: WEAPONS[id].description, price: [220, 280, 340][index],
+    swatch: [WEAPONS[id].color, "#ffffff"], owned: isWeaponOwned(save, id),
+  }));
+
+  return [...characters, ...weapons, ...palettes];
 }
 
 /** Returns { ok, save, message }. Orbs are only spent when the purchase works. */
@@ -54,6 +60,8 @@ export function buyItem(item) {
   const owned =
     item.kind === "character"
       ? isCharacterOwned(save, item.value)
+      : item.kind === "weapon"
+      ? isWeaponOwned(save, item.value)
       : (save.unlockedPalettes || []).includes(item.value);
   if (item.owned || owned) return { ok: false, message: "ALREADY OWNED" };
 
@@ -63,6 +71,8 @@ export function buyItem(item) {
   const patch = { orbs: orbs - item.price };
   if (item.kind === "character") {
     patch.unlockedCharacters = [...(save.unlockedCharacters || []), item.value];
+  } else if (item.kind === "weapon") {
+    patch.unlockedWeapons = [...(save.unlockedWeapons || []), item.value];
   } else {
     patch.unlockedPalettes = [...(save.unlockedPalettes || []), item.value];
   }

@@ -220,6 +220,37 @@
   background-image: url("/game/bg/purple.png");
 }
 
+.pa-bg-tile.pa-bg-choice-blue {
+  background-image: radial-gradient(ellipse at 72% 28%, rgba(36, 131, 230, .55), transparent 34%), linear-gradient(135deg, #06132c, #102950 48%, #071020);
+}
+.pa-bg-tile.pa-bg-choice-purple {
+  background-image: radial-gradient(ellipse at 68% 24%, rgba(139, 92, 246, .52), transparent 36%), linear-gradient(135deg, #160b31, #321452 48%, #0a0b1d);
+}
+.pa-bg-tile.pa-bg-choice-teal {
+  background-image: radial-gradient(ellipse at 70% 28%, rgba(20, 184, 166, .5), transparent 35%), linear-gradient(135deg, #041d24, #0b3d45 52%, #071117);
+}
+.pa-bg-tile.pa-bg-choice-ember {
+  background-image: radial-gradient(ellipse at 74% 30%, rgba(249, 115, 22, .48), transparent 34%), linear-gradient(135deg, #25100d, #4b1c20 48%, #100a14);
+}
+
+.pa-backdrop-horizon {
+  background-image: linear-gradient(to top, rgba(75, 227, 255, .12), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 54px, rgba(75, 227, 255, .07) 55px 56px),
+    repeating-linear-gradient(0deg, transparent 0 34px, rgba(75, 227, 255, .07) 35px 36px);
+  mask-image: linear-gradient(to top, black, transparent 95%);
+  transform: perspective(320px) rotateX(58deg) scale(1.45);
+  transform-origin: bottom center;
+}
+
+.pa-backdrop-orbit {
+  box-shadow: inset 0 0 70px rgba(75, 227, 255, .04), 0 0 60px rgba(75, 227, 255, .03);
+  animation: pa-orbit 24s linear infinite;
+}
+
+@keyframes pa-orbit {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes pa-pan {
   from { background-position: 0 0; }
   to { background-position: 1024px 0; }
@@ -379,6 +410,36 @@
   background: conic-gradient(from 0deg, rgba(255, 61, 139, 0.55) 0 6deg, transparent 6deg 45deg);
   animation: pa-rays 6s linear infinite;
   pointer-events: none;
+}
+
+.pa-challenge-result {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--trial-accent), transparent 38%);
+  background: linear-gradient(115deg, color-mix(in srgb, var(--trial-accent), transparent 91%), rgba(7, 10, 24, 0.96) 52%, rgba(255, 209, 102, 0.08));
+  box-shadow: inset 0 0 35px color-mix(in srgb, var(--trial-accent), transparent 90%), 0 0 28px color-mix(in srgb, var(--trial-accent), transparent 88%);
+}
+
+.pa-challenge-result::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--trial-accent), transparent 93%) 14px 16px);
+  animation: pa-trial-sheen 7s linear infinite;
+}
+
+.pa-challenge-result-bar {
+  animation: pa-trial-bar 2.8s ease-in-out infinite;
+}
+
+@keyframes pa-trial-sheen {
+  to { transform: translateX(32px); }
+}
+
+@keyframes pa-trial-bar {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; filter: brightness(1.8); }
 }
 
 @keyframes pa-rays {
@@ -545,7 +606,7 @@ canvas.pa-canvas {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pa-bg-tile, .pa-cameo, .pa-blink, .pa-marquee, .pa-fade-up, .pa-gameover-glitch, .pa-shard-pop, .pa-flawless-shard, .pa-flawless-rays {
+  .pa-bg-tile, .pa-backdrop-orbit, .pa-cameo, .pa-blink, .pa-marquee, .pa-fade-up, .pa-gameover-glitch, .pa-shard-pop, .pa-flawless-shard, .pa-flawless-rays, .pa-challenge-result::after, .pa-challenge-result-bar {
     animation: none;
   }
 }

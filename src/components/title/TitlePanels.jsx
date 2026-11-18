@@ -392,6 +392,20 @@ export function SettingsPanel({ settings, onChange, onBack, onFullscreenToggle }
           settings.mobileOrientation || "landscape",
           selectOrientation
         )}
+        {[
+          ["menu", "MAIN MENU BACKGROUND"],
+          ["map", "WORLD MAP BACKGROUND"],
+          ["shop", "SHOP BACKGROUND"],
+        ].map(([key, label]) => (
+          <div key={key}>
+            {selectSetting(label, [
+              { value: "blue", label: "STARFIELD BLUE" },
+              { value: "purple", label: "NEBULA VIOLET" },
+              { value: "teal", label: "DEEP TEAL" },
+              { value: "ember", label: "EMBER GLOW" },
+            ], settings.backgrounds?.[key] || (key === "menu" ? "blue" : "purple"), (value) => onChange({ backgrounds: { ...(settings.backgrounds || {}), [key]: value } }))}
+          </div>
+        ))}
         <p className="-mt-2 text-xs text-[#c6d2f2]/40">
           Orientation locking is supported only by some mobile browsers and may require fullscreen.
         </p>

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpDown, CircleDot, Keyboard } from "lucide-react";
+import { ArrowUpDown, Award, CircleDot, Keyboard } from "lucide-react";
 import { PixelBackdrop } from "@/components/game/GameUI";
 import {
   ConfirmPanel,
   ExitOverlay,
-  LevelSelectPanel,
   MenuList,
   SaveSlotsPanel,
   SettingsPanel,
@@ -28,7 +27,6 @@ import {
   totalStars,
   writeSave,
 } from "@/game/core";
-import { LEVELS } from "@/game/world";
 
 const buildKeyHints = (controls) => {
   const keys = { ...DEFAULT_CONTROLS, ...(controls || {}) };
@@ -71,11 +69,11 @@ export default function Title() {
       { id: "customize", label: "Customization", meta: save ? "" : "NO SAVE", disabled: !save },
       {
         id: "level-select",
-        label: "Level Select",
-        meta: levelSelectUnlocked ? "100%" : "LOCKED",
-        disabled: !levelSelectUnlocked,
+        label: "Challenge Mode",
+        meta: levelSelectUnlocked ? "6 TRIALS" : "LOCKED",
       },
       { id: "load", label: "Load Game", meta: `${slots.filter((slot) => slot.save).length}/${SAVE_SLOT_COUNT} SLOTS` },
+      { id: "arcade", label: "Arcade Mode", meta: save?.arcadeEmblem ? "ARCADE EMBLEM" : "ONE LIFE" },
       { id: "settings", label: "Settings" },
       { id: "exit", label: "Exit" },
     ],
@@ -105,10 +103,15 @@ export default function Title() {
     }
     if (id === "level-select") {
       if (!levelSelectUnlocked) {
-        setNotice("LOCKED — COLLECT ALL SHARDS AND HIDDEN COINS");
+        setNotice("LOCKED — BEAT ALL 10 MAIN STAGES");
         return;
       }
-      setPanel("level-select");
+      navigate("/level-select-map");
+      return;
+    }
+    if (id === "arcade") {
+      if (!save) setNotice("START A SAVE BEFORE ENTERING ARCADE MODE");
+      else navigate("/arcade");
       return;
     }
     if (id === "load") {
@@ -193,7 +196,7 @@ export default function Title() {
 
   return (
     <div className="pa-root relative min-h-screen overflow-hidden">
-      <PixelBackdrop />
+      <PixelBackdrop theme={save?.settings?.backgrounds?.menu} />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-5 sm:px-8">
         <header className="flex items-center justify-between border-b border-white/[0.06] pb-4">
@@ -212,6 +215,7 @@ export default function Title() {
         <main className="grid flex-1 items-center gap-10 py-8 lg:grid-cols-[1.05fr_0.95fr]">
           <section>
             <TitleLogo />
+            {save?.arcadeEmblem ? <div className="pa-fade-up mt-5 inline-flex items-center gap-2 border border-[#ffd166]/40 bg-[#ffd166]/10 px-3 py-2"><Award className="h-4 w-4 text-[#ffd166]"/><span className="pa-pixel text-[7px] tracking-widest text-[#ffd166]">ARCADE GAUNTLET EMBLEM</span></div> : null}
             <MenuList items={items} index={index} onFocus={(i) => { setIndex(i); sfx("move"); }} onSelect={select} />
             <div className="mt-4 h-4">
               {notice ? <p className="pa-pixel text-[8px] text-[#ffd166]">{notice}</p> : null}
@@ -304,20 +308,6 @@ export default function Title() {
                 highContrast: false,
               }}
               onChange={updateSettings}
-              onBack={() => setPanel(null)}
-            />
-          )}
-          {panel === "level-select" && (
-            <LevelSelectPanel
-              levels={LEVELS}
-              onSelect={(stage) => {
-                if (!isLevelSelectUnlocked(loadSave())) {
-                  setPanel(null);
-                  setNotice("LEVEL SELECT REQUIRES 100% COMPLETION");
-                  return;
-                }
-                navigate(`/stage/${stage}`);
-              }}
               onBack={() => setPanel(null)}
             />
           )}

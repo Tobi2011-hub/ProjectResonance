@@ -827,6 +827,8 @@ export const createDefaultSave = () => ({
   unlockedCharacters: [],
   unlockedPalettes: [],
   unlockedWeapons: [],
+  challengeEmblems: [],
+  arcadeEmblem: false,
   checkpoint: null,
   settings: {
     master: 1,
@@ -837,6 +839,7 @@ export const createDefaultSave = () => ({
     touchControlMode: "joystick",
     mobileOrientation: "landscape",
     highContrast: false,
+    backgrounds: { menu: "blue", map: "purple", shop: "purple" },
     controls: { ...DEFAULT_CONTROLS },
   },
   savedAt: null,
@@ -897,6 +900,8 @@ function normalize(parsed) {
     glow: parsed.armor?.glow || frame.glow || base.armor.glow,
   };
   save.settings = { ...base.settings, ...(parsed.settings || {}) };
+  save.settings.backgrounds = { ...base.settings.backgrounds, ...(parsed.settings?.backgrounds || {}) };
+  save.arcadeEmblem = Boolean(parsed.arcadeEmblem);
   save.settings.controls = { ...DEFAULT_CONTROLS, ...((parsed.settings || {}).controls || {}) };
   save.abilities = addCharacterStarterAbility(Object.fromEntries(
     Object.entries(parsed.abilities || {}).map(([id, rank]) => [id, Math.max(0, Math.min(MAX_ABILITY_RANK, rank === true ? 1 : Number(rank) || 0))])
@@ -921,6 +926,7 @@ function normalize(parsed) {
   save.unlockedWeapons = Array.isArray(parsed.unlockedWeapons)
     ? [...new Set(parsed.unlockedWeapons.map(migrateWeaponId))]
     : [];
+  save.challengeEmblems = Array.isArray(parsed.challengeEmblems) ? [...new Set(parsed.challengeEmblems.filter((id) => Number.isInteger(id) && id >= 1 && id <= 18))] : [];
   save.collectedCoins = Object.fromEntries(
     COIN_CHALLENGE_STAGES.map((stage) => [
       stage,
@@ -954,6 +960,7 @@ export function writeSave(patch) {
   if (patch?.armor) next.armor = { ...current.armor, ...patch.armor };
   if (patch?.settings) {
     next.settings = { ...current.settings, ...patch.settings };
+    next.settings.backgrounds = { ...current.settings.backgrounds, ...(patch.settings.backgrounds || {}) };
     next.settings.controls = { ...current.settings.controls, ...(patch.settings.controls || {}) };
   }
   if (patch?.abilities) next.abilities = { ...current.abilities, ...patch.abilities };
@@ -993,15 +1000,13 @@ export function totalStars(save) {
 }
 
 export function isLevelSelectUnlocked(save) {
-  if (!save) return false;
-  const allShardsCollected = Array.from({ length: TOTAL_STAGES }, (_, index) => index + 1).every((stage) => {
-    const count = stage === 10 ? 1 : 5;
-    return Array.from({ length: count }, (_, index) => Boolean(save.stars?.[stage]?.[index])).every(Boolean);
-  });
-  const allCoinsCollected = COIN_CHALLENGE_STAGES.every((stage) =>
-    Array.from({ length: COINS_PER_CHALLENGE_STAGE }, (_, index) => Boolean(save.collectedCoins?.[stage]?.[index])).every(Boolean)
-  );
-  return allShardsCollected && allCoinsCollected;
+  return Boolean(save && Array.from({ length: MAIN_STAGES }, (_, i) => i + 1).every((stage) => (save.cleared || []).includes(stage)));
+}
+
+export function completeChallenge(id) {
+  const save = loadSave() || createDefaultSave();
+  const challengeEmblems = [...new Set([...(save.challengeEmblems || []), id])];
+  return writeSave({ challengeEmblems });
 }
 
 export function recordCoin(stage, index) {
@@ -1062,14 +1067,7 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
     }
   }
 
-  // Coin challenge: every coin in one run hands over that stage's weapon.
-  if (coinsTotal > 0 && coins >= coinsTotal) {
-    const reward = CHALLENGE_WEAPONS[stage];
-    if (reward && !unlockedWeapons.has(reward)) {
-      unlockedWeapons.add(reward);
-      unlockedWeapon = reward;
-    }
-  }
+  // Coin challenge progress is recorded separately; premium weapons are sold in the shop.
 
   if (noDeath) {
     const list = [...(stars[stage] || Array(STARS_PER_STAGE).fill(false))];
@@ -1080,6 +1078,8 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
   const orbGain =
     (SECRET_STAGES.includes(stage) ? 80 : 40) +
     collected * 5 +
+    Math.max(0, coins) * 2 +
+    (coinsTotal > 0 && coins >= coinsTotal ? 20 : 0) +
     (unlockedWeapon ? 60 : 0) +
     (unlockedSecret ? 40 : 0);
 
@@ -1113,8 +1113,8 @@ export function saveCheckpoint(stage, checkpointIndex) {
 export function isWeaponOwned(save, id) {
   const weapon = WEAPONS[id];
   if (!weapon) return false;
-  if (!weapon.unlock) return true;
-  return (save?.unlockedWeapons || []).includes(id);
+  if (["rail", "seeker", "lance"].includes(id)) return (save?.unlockedWeapons || []).includes(id);
+  return true;
 }
 
 export function isCharacterOwned(save, index) {

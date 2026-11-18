@@ -43,7 +43,7 @@ export default function Shop() {
 
   return (
     <div className="pa-root relative min-h-screen overflow-hidden">
-      <PixelBackdrop variant="purple" />
+      <PixelBackdrop variant="purple" theme={save?.settings?.backgrounds?.shop} />
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-4 sm:px-8">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
           <button
@@ -67,8 +67,7 @@ export default function Shop() {
             <PixelFontText text="ORB EXCHANGE" className="text-[14px] text-white sm:text-[16px]" spacing={0.04} />
           </div>
           <p className="mt-2 text-sm tracking-wide text-[#c6d2f2]/55">
-            Orbs drop from every stage you clear. Character unlocks are shared across save slots and last until you
-            delete the save that bought them. Armour palettes remain tied to each save.
+            Trade earned orbs for frames, weapon systems, and armor palettes. Three weapons and two frames are exclusive to this exchange.
           </p>
           {notice ? <PixelFontText text={notice} className="mt-3 text-[8px] text-[#ffd166]" spacing={0.04} /> : null}
 

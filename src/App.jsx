@@ -13,6 +13,8 @@ import Customize from './pages/Customize';
 import WorldMap from './pages/WorldMap';
 import Stage from './pages/Stage';
 import Shop from './pages/Shop';
+import ChallengeMode from './pages/ChallengeMode';
+import ArcadeMode from './pages/ArcadeMode';
 import { loadSave } from '@/game/core';
 
 const AuthenticatedApp = () => {
@@ -46,6 +48,8 @@ const AuthenticatedApp = () => {
       <Route path="/customize" element={<Customize />} />
       <Route path="/world" element={<WorldMap />} />
       <Route path="/stage/:stage" element={<Stage />} />
+      <Route path="/level-select-map" element={<ChallengeMode />} />
+      <Route path="/arcade" element={<ArcadeMode />} />
       <Route path="/shop" element={<Shop />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
