@@ -14,6 +14,7 @@ import {
   Input,
   MAX_HEALTH,
   PLAYER_DAMAGE_MULTIPLIER,
+  isWeaponOwned,
   SPIKE_DAMAGE,
   START_LIVES,
   STEP,
@@ -62,6 +63,10 @@ const NO_HOOKS = {
   onOutOfLives: () => {},
 };
 
+// Challenge stages are long gauntlets, so keep their enemies lighter than the
+// story equivalents. This is applied only when a challenge config is present.
+const CHALLENGE_ENEMY_NERF = { speed: 0.65, health: 0.55, damage: 0.5 };
+
 export default class GameEngine {
   constructor({ canvas, level, assets, save, hooks, challenge = null, arcade = false, arcadeState = null }) {
     this.canvas = canvas;
@@ -97,8 +102,9 @@ export default class GameEngine {
     // ---- loadout --------------------------------------------------------
     // Same weapon in both slots = dual wield: double fire rate, +30% damage,
     // half the ammo, and the pilot runs on 720 HP instead of 1200.
-    const primary = WEAPONS[this.challenge?.weapons?.[0]] ? this.challenge.weapons[0] : WEAPONS[save.primary] ? save.primary : "buster";
-    const secondary = WEAPONS[this.challenge?.weapons?.[1]] ? this.challenge.weapons[1] : WEAPONS[save.secondary] ? save.secondary : "blade";
+    const chooseOwnedWeapon = (candidate, fallback) => WEAPONS[candidate] && isWeaponOwned(save, candidate) ? candidate : fallback;
+    const primary = chooseOwnedWeapon(this.challenge?.weapons?.[0] || save.primary, "buster");
+    const secondary = chooseOwnedWeapon(this.challenge?.weapons?.[1] || save.secondary, "blade");
     this.weapons = [primary, secondary];
     this.dual = primary === secondary;
     this.damageMult = (this.dual ? DUAL.damage : 1) * PLAYER_DAMAGE_MULTIPLIER * (this.challenge?.damage ?? 1);
@@ -220,10 +226,13 @@ export default class GameEngine {
     this.enemies = (level.enemies || []).map(
       (enemy) => new Enemy(enemy.x, enemy.y, enemy.minX, enemy.maxX, enemy.variant)
     );
-    if (challenge) this.enemies.forEach((enemy) => {
-      enemy.speed *= challenge.enemy;
-      enemy.hp = Math.ceil(enemy.hp * challenge.enemy);
+    if (this.challenge) this.enemies.forEach((enemy) => {
+      enemy.speed *= CHALLENGE_ENEMY_NERF.speed;
+      enemy.hp = Math.max(1, Math.ceil(enemy.hp * CHALLENGE_ENEMY_NERF.health));
       enemy.maxHp = enemy.hp;
+      enemy.shieldHp = Math.ceil(enemy.shieldHp * CHALLENGE_ENEMY_NERF.health);
+      enemy.maxShieldHp = enemy.shieldHp;
+      enemy.challengeDamageMultiplier = CHALLENGE_ENEMY_NERF.damage;
     });
     this.boss = level.boss ? this.createBoss() : null;
     this.bossWorld = level.boss?.collisionPlatforms
@@ -285,6 +294,7 @@ export default class GameEngine {
     return new Boss(this.level.boss.x, this.level.boss.y, {
       minX: this.level.boss.minX ?? this.level.door?.x ?? 0,
       maxX: this.level.boss.maxX ?? this.level.width,
+      ultimate: Boolean(this.level.boss.ultimate),
     });
   }
 
@@ -538,7 +548,7 @@ export default class GameEngine {
       } else {
         const shot = fireWeapon(type, this.player, {
           overdrive: Number(this.abilities.overdrive) || 0,
-          mult: this.damageMult * (this.player.damageBoost || 1),
+          mult: this.damageMult * (this.player.damageBoost || 1) * (WEAPONS[this.weapons[this.slot]]?.passiveDamage || 1),
         });
         if (shot.kind === "blade") this.blades.push(shot);
         else this.bullets.push(shot);
@@ -1156,6 +1166,18 @@ export default class GameEngine {
     this.pushHud(true);
   }
 
+  bossPhaseThree(boss) {
+    this.phaseAlertTimer = 3.5;
+    this.bossShieldAdds = [];
+    this.enemyBullets = [];
+    burst(this.effects, boss.x + boss.w / 2, boss.y + boss.h / 2, { count: 54, color: "#a78bfa", speed: 260, life: 1.1 });
+    ring(this.effects, boss.x + boss.w / 2, boss.y + boss.h / 2, 120, "#7af6c8", 0.7);
+    addFlash(this.effects, boss.x + boss.w / 2, boss.y + boss.h / 2, 90, "#a78bfa");
+    shake(this.effects, 14);
+    sfx("explode");
+    this.pushHud(true);
+  }
+
   spawnBossPlatforms() {
     if (this.bossPlatforms.length) return;
     const arenaOffset = this.level.boss.arenaMinX - 14;
@@ -1230,6 +1252,24 @@ export default class GameEngine {
     shake(this.effects, 2);
   }
 
+  fireVoidWave(boss, player) {
+    const originX = boss.x + boss.w / 2;
+    const originY = boss.y + boss.h - 10;
+    const angle = Math.atan2(player.centerY - originY, player.centerX - originX);
+    [-0.28, 0, 0.28].forEach((offset) => {
+      const a = angle + offset;
+      this.enemyBullets.push({ kind: "enemy", bossAttack: true, x: originX, y: originY, vx: Math.cos(a) * 210, vy: Math.sin(a) * 210 - 40, r: 7, life: 3.2, damage: Math.round(4 * 0.6) });
+    });
+    addFlash(this.effects, originX, originY, 28, "#7af6c8");
+    shake(this.effects, 3);
+  }
+
+  fireGravityWell(boss, player) {
+    const x = clamp(player.centerX, this.camera.x + 30, this.camera.x + VIEW_W - 30);
+    this.enemyBullets.push({ kind: "enemy", bossAttack: true, x, y: 6, vx: 0, vy: 175, r: 10, life: 5, damage: Math.round(4 * 0.6) });
+    ring(this.effects, x, 24, 18, "#a78bfa", 0.25);
+  }
+
   fireSpread(boss, player) {
     const originX = boss.x + boss.w / 2;
     const originY = boss.y + boss.h * 0.45;
@@ -1279,6 +1319,7 @@ export default class GameEngine {
       shards: [...this.runShards],
       collected: this.runShards.filter(Boolean).length,
       noDeath,
+      deaths: this.deaths,
       lives: this.lives,
       coins: this.coinsTaken,
       coinsTotal: this.coinsTotal,
@@ -1341,6 +1382,7 @@ export default class GameEngine {
       shards: this.stars.filter(Boolean).length,
       collected: this.runShards.filter(Boolean).length,
       totalShards: this.level.id === 10 ? 1 : 5,
+      starCurrency: Boolean(this.level.starCurrency),
       accent: this.level.accent,
       lives: this.lives,
       deaths: this.deaths,
@@ -1364,7 +1406,9 @@ export default class GameEngine {
       bossVisible: Boolean(this.boss && this.bossTriggered && !this.bossDefeated),
       bossHp: this.boss ? this.boss.hp : 0,
       bossMax: this.boss ? this.boss.maxHp : 1,
-      bossPhase: this.boss?.phaseTwo ? 2 : 1,
+      bossPhase: this.boss?.phase || 1,
+      phaseAlertLevel: this.boss?.phase || 2,
+      ultimateBoss: Boolean(this.boss?.ultimate),
       bossShielded: Boolean(this.boss?.exoshield),
       bossTransitioning: Boolean(this.boss?.state === "phase-transition"),
       phaseAlert: this.phaseAlertTimer > 0,

@@ -16,6 +16,7 @@ import {
   DUAL,
   MAX_HEALTH,
   WEAPON_ORDER,
+  SECRET_WEAPONS,
   WEAPON_TYPES,
   clearSave,
   createDefaultSave,
@@ -270,8 +271,8 @@ export default function Customize() {
               onChange={(id) => handleWeapon(id, setPrimary)}
               active={ROWS[focus] === "primary"}
               types={WEAPON_TYPES}
-              order={WEAPON_ORDER}
-              lockedIds={WEAPON_ORDER.filter((id) => !isWeaponOwned(save, id))}
+              order={WEAPON_ORDER.filter((id) => !SECRET_WEAPONS.includes(id) || isWeaponOwned(save, id))}
+              lockedIds={WEAPON_ORDER.filter((id) => (!SECRET_WEAPONS.includes(id) || isWeaponOwned(save, id)) && !isWeaponOwned(save, id))}
             />
             <WeaponSelect
               title="SECONDARY WEAPON"
@@ -279,8 +280,8 @@ export default function Customize() {
               onChange={(id) => handleWeapon(id, setSecondary)}
               active={ROWS[focus] === "secondary"}
               types={WEAPON_TYPES}
-              order={WEAPON_ORDER}
-              lockedIds={WEAPON_ORDER.filter((id) => !isWeaponOwned(save, id))}
+              order={WEAPON_ORDER.filter((id) => !SECRET_WEAPONS.includes(id) || isWeaponOwned(save, id))}
+              lockedIds={WEAPON_ORDER.filter((id) => (!SECRET_WEAPONS.includes(id) || isWeaponOwned(save, id)) && !isWeaponOwned(save, id))}
             />
 
             <div className="sm:col-span-2">

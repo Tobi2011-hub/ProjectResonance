@@ -79,7 +79,7 @@ export default function Shop() {
         </main>
 
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
-          <PixelFontText text="40 ORBS PER STAGE · 80 PER RIFT · 5 PER SHARD" className="text-[7px] text-[#c6d2f2]/25" spacing={0.04} />
+          <PixelFontText text="40 ORBS PER STAGE · 5 PER SHARD" className="text-[7px] text-[#c6d2f2]/25" spacing={0.04} />
           <button
             type="button"
             onClick={() => navigate("/customize")}

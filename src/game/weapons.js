@@ -101,13 +101,24 @@ export const WEAPONS = {
     sprite: [5, 4],
     description: "Long energy blade. Reaches almost to mid-range. No ammo.",
   },
+  // Postgame story rewards. These are hidden from the exchange until earned.
+  starfang: { id: "starfang", name: "Starfang", range: "Short-Range", category: "melee", cooldown: 0.46, damage: 38, reach: 78, color: "#78f0df", sprite: [0, 0], description: "A quick crescent cut that rewards close timing." },
+  sunhammer: { id: "sunhammer", name: "Sunhammer", range: "Short-Range", category: "melee", cooldown: 0.82, damage: 66, reach: 72, color: "#ffbd55", sprite: [1, 0], description: "A slow, heavy strike with a wide impact." },
+  thornbow: { id: "thornbow", name: "Thornbow", range: "Long-Range", category: "long", cooldown: 0.65, damage: 25, maxAmmo: 42, color: "#a8e879", sprite: [2, 1], description: "A rapid thorn bolt that pierces a line of foes." },
+  frostbell: { id: "frostbell", name: "Frostbell", range: "Mid-Range", category: "mid", cooldown: 0.92, damage: 48, maxAmmo: 28, color: "#83d9ff", sprite: [3, 1], description: "A heavy frost orb that bursts on impact." },
+  stormfork: { id: "stormfork", name: "Stormfork", range: "Long-Range", category: "long", cooldown: 0.48, damage: 20, maxAmmo: 54, color: "#c4a2ff", sprite: [4, 1], description: "A fast forked bolt built for sustained fire." },
+  duskblade: { id: "duskblade", name: "Duskblade", range: "Short-Range", category: "melee", cooldown: 0.58, damage: 52, reach: 92, color: "#cb83ff", sprite: [6, 2], description: "A long violet arc with generous reach." },
+  sunlance: { id: "sunlance", name: "Sunlance", range: "Long-Range", category: "long", cooldown: 1.15, damage: 72, maxAmmo: 20, color: "#ff7e57", sprite: [7, 3], description: "A charged lance that pierces reinforced targets." },
+  astralcore: { id: "astralcore", name: "Astral Core", range: "Mid-Range", category: "mid", cooldown: 0.28, damage: 84, maxAmmo: 80, color: "#fff28a", sprite: [8, 4], passiveDamage: 1.75, description: "An unstable star core. While equipped, it greatly increases your damage." },
 };
 
 /** Kept for the files that already import WEAPON_TYPES from core. */
 export const WEAPON_TYPES = WEAPONS;
 
 /** Display / cycling order in every menu. */
-export const WEAPON_ORDER = ["blade", "plasma", "buster", "cyclone", "rail", "seeker", "lance"];
+export const SECRET_WEAPON_REWARDS = { 19: "starfang", 20: "sunhammer", 21: "thornbow", 22: "frostbell", 23: "stormfork", 24: "duskblade", 25: "sunlance", 26: "astralcore" };
+export const SECRET_WEAPONS = Object.values(SECRET_WEAPON_REWARDS);
+export const WEAPON_ORDER = ["blade", "plasma", "buster", "cyclone", "rail", "seeker", "lance", ...SECRET_WEAPONS];
 
 /** The four you own from the start. */
 export const BASE_WEAPONS = ["blade", "plasma", "buster", "cyclone"];

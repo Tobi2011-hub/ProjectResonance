@@ -3,11 +3,12 @@
  * the flawless-clear bonus.
  */
 import { useEffect, useState } from "react";
-import { Gem } from "lucide-react";
+import { Gem, Star } from "lucide-react";
 import { sfx } from "@/game/core";
 
-export default function ShardReveal({ shards, noDeath, accent, totalShards = 5, shardLabel = "SHARDS" }) {
+export default function ShardReveal({ shards, noDeath, accent, totalShards = 5, shardLabel = "SHARDS", starCurrency = false }) {
   const [shown, setShown] = useState(0);
+  const Token = starCurrency ? Star : Gem;
 
   useEffect(() => {
     if (shown >= totalShards + 1) return undefined;
@@ -37,7 +38,7 @@ export default function ShardReveal({ shards, noDeath, accent, totalShards = 5, 
               }`}
               style={visible && taken ? { borderColor: accent, backgroundColor: `${accent}24`, boxShadow: `0 0 22px ${accent}55` } : undefined}
             >
-              <Gem
+              <Token
                 className={`h-6 w-6 transition-colors ${visible && taken ? "fill-current" : "text-white/20"}`}
                 style={visible && taken ? { color: accent } : undefined}
               />
@@ -61,7 +62,7 @@ export default function ShardReveal({ shards, noDeath, accent, totalShards = 5, 
               : undefined
           }
         >
-          <Gem
+          <Token
             className={`h-8 w-8 sm:h-9 sm:w-9 ${shown >= totalShards + 1 && noDeath ? "fill-current" : "text-white/20"}`}
             style={shown >= totalShards + 1 && noDeath ? { color: accent } : undefined}
           />

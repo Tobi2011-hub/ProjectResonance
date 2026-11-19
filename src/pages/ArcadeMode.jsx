@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Award, Play, RotateCcw, Skull } from "lucide-react";
 import { GameCanvas, PixelBackdrop } from "@/components/game/GameUI";
@@ -28,9 +28,16 @@ export default function ArcadeMode() {
   const [arcadeState, setArcadeState] = useState(null);
   const [score, setScore] = useState(0);
   const [gemsSpent, setGemsSpent] = useState(0);
+  const [runTimer, setRunTimer] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const ownedWeapons = useMemo(() => WEAPON_ORDER.filter((id) => isWeaponOwned(save, id)), [save]);
   const level = ARCADE_LEVELS[stageIndex];
   const cleanLevel = useMemo(() => ({ ...level, stars: [], coins: [], ammo: [], fruits: [], checkpoints: [], tutorials: [] }), [level]);
+  useEffect(() => {
+    if (phase !== "run" || isPaused) return undefined;
+    const timerId = setInterval(() => setRunTimer((value) => value + 1), 1000);
+    return () => clearInterval(timerId);
+  }, [phase, isPaused]);
   if (!save) return null;
 
   const arcadeSave = {
@@ -49,6 +56,8 @@ export default function ArcadeMode() {
     setArcadeState(null);
     setScore(0);
     setGemsSpent(0);
+    setRunTimer(0);
+    setIsPaused(false);
     setAttempt((value) => value + 1);
     setPhase("run");
   };
@@ -66,6 +75,8 @@ export default function ArcadeMode() {
     setArcadeState(null);
     setScore(0);
     setGemsSpent(0);
+    setRunTimer(0);
+    setIsPaused(false);
     setAttempt((value) => value + 1);
     setPhase("run");
   };
@@ -74,10 +85,11 @@ export default function ArcadeMode() {
     if (retryGems < 1) return;
     setGemsSpent((value) => value + 1);
     setAttempt((value) => value + 1);
+    setIsPaused(false);
     setPhase("run");
   };
 
-  if (phase === "run") return <div className="pa-root min-h-screen bg-[#05060d]"><GameCanvas key={`${attempt}-${stageIndex}`} level={cleanLevel} save={arcadeSave} arcade arcadeState={arcadeState} score={score} retryGems={retryGems} onScore={(amount) => setScore((value) => value + amount)} onComplete={finishStage} onOutOfLives={() => setPhase("gameover")} onQuit={() => navigate("/")} /></div>;
+  if (phase === "run") return <div className="pa-root min-h-screen bg-[#05060d]"><GameCanvas key={`${attempt}-${stageIndex}`} level={cleanLevel} save={arcadeSave} arcade arcadeState={arcadeState} timer={runTimer} score={score} retryGems={retryGems} onScore={(amount) => setScore((value) => value + amount)} onComplete={finishStage} onOutOfLives={() => setPhase("gameover")} onPauseChange={setIsPaused} onQuit={() => navigate("/")} /></div>;
 
   return <div className="pa-root relative min-h-screen overflow-hidden bg-[#05060d] text-white">
     <PixelBackdrop theme={save.settings?.backgrounds?.menu} />

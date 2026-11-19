@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Lock, Play, Shield, Sparkles } from "lucide-react";
 import { PixelBackdrop } from "@/components/game/GameUI";
 import PixelFontText from "@/components/game/PixelFontText";
 import { CHALLENGES } from "@/game/challenges";
-import { CHARACTERS, WEAPON_ORDER, WEAPONS, isLevelSelectUnlocked, loadSave, sfx } from "@/game/core";
+import { CHARACTERS, WEAPON_ORDER, WEAPONS, isLevelSelectUnlocked, isWeaponOwned, loadSave, sfx } from "@/game/core";
 
 export default function ChallengeMode() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ export default function ChallengeMode() {
   const unlocked = isLevelSelectUnlocked(save);
   const emblems = save.challengeEmblems || [];
   const challenge = CHALLENGES[selected - 1];
+  const ownedWeapons = WEAPON_ORDER.filter((id) => isWeaponOwned(save, id));
   const launch = (item) => {
     if (!unlocked || (item.id > 1 && !emblems.includes(item.id - 1))) return;
     sfx("select");
@@ -32,7 +33,7 @@ export default function ChallengeMode() {
       {!unlocked ? <div className="pa-panel mt-10 p-8 text-center"><Lock className="mx-auto text-[#ffd166]"/><p className="pa-pixel mt-4 text-[9px]">CHALLENGE MODE LOCKED</p><p className="mt-2 text-sm text-[#c6d2f2]/60">Beat every main stage to open the challenge ladder.</p><button onClick={() => navigate("/world")} className="pa-pixel mt-5 border border-[#4be3ff]/50 px-5 py-3 text-[8px] text-[#4be3ff]">RETURN TO WORLD MAP</button></div> : <>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border border-[#2a2f52] bg-[#070a18]/80 p-4">
         <div className="flex items-center gap-3"><span className="pa-pixel text-[7px] text-[#4be3ff]">FRAME</span><button onClick={() => setCharacter((character + 1) % CHARACTERS.length)} className="pa-pixel border border-[#4be3ff]/40 px-3 py-2 text-[8px]">{CHARACTERS[character].name} ↻</button><span className="pa-pixel text-[7px] text-[#c6d2f2]/45">ALL FRAMES TEMPORARILY AVAILABLE</span></div>
-        <div className="flex flex-wrap items-center gap-2">{[weaponA, weaponB].map((weapon, i) => <select key={i} value={weapon} onChange={(e) => (i ? setWeaponB(e.target.value) : setWeaponA(e.target.value))} className="pa-pixel bg-[#0c1024] border border-[#4be3ff]/30 px-2 py-2 text-[8px] text-white">{WEAPON_ORDER.map((id) => <option key={id} value={id}>{WEAPONS[id].name} (NERFED)</option>)}</select>)}</div>
+        <div className="flex flex-wrap items-center gap-2">{[weaponA, weaponB].map((weapon, i) => <select key={i} value={ownedWeapons.includes(weapon) ? weapon : (i ? "blade" : "buster")} onChange={(e) => (i ? setWeaponB(e.target.value) : setWeaponA(e.target.value))} className="pa-pixel bg-[#0c1024] border border-[#4be3ff]/30 px-2 py-2 text-[8px] text-white">{ownedWeapons.map((id) => <option key={id} value={id}>{WEAPONS[id].name} (NERFED)</option>)}</select>)}</div>
       </div>
       <section className="mt-6 grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{CHALLENGES.map((item) => {
         const done = emblems.includes(item.id), available = item.id === 1 || emblems.includes(item.id - 1);
@@ -43,7 +44,7 @@ export default function ChallengeMode() {
           {!available && <span className="absolute inset-0 bg-[#05060d]/45"/>}
         </button>;
       })}</section>
-      <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><p className="pa-pixel flex items-center gap-2 text-[7px] text-[#c6d2f2]/40"><Shield size={13}/> ALL FRAMES + WEAPONS · BOOSTED TRIAL STATS · ONE LIFE</p><p className="pa-pixel text-[7px] text-[#ffd166]">EMBLEMS {emblems.length} / {CHALLENGES.length}</p></footer>
+      <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><p className="pa-pixel flex items-center gap-2 text-[7px] text-[#c6d2f2]/40"><Shield size={13}/> ALL FRAMES · OWNED WEAPONS · BOOSTED TRIAL STATS · ONE LIFE</p><p className="pa-pixel text-[7px] text-[#ffd166]">EMBLEMS {emblems.length} / {CHALLENGES.length}</p></footer>
       </>}
     </main>
   </div>;

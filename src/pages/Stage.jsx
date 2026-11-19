@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Gem, HeartCrack, Lock, RotateCcw } from "lucide-react";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Gem, HeartCrack, Lock, RotateCcw, Star } from "lucide-react";
 import { ClearOverlay, GameCanvas } from "@/components/game/GameUI";
 import { getLevel } from "@/game/world";
-import { completeChallenge, completeStage, isLevelSelectUnlocked, isStageUnlocked, loadSave } from "@/game/core";
+import { completeChallenge, completeStage, hasPostgameUnlock, isLevelSelectUnlocked, isStageUnlocked, loadSave, NEW_WORLD_FINAL_STAGE, NEW_WORLD_STAGES, SECRET_STAGES } from "@/game/core";
 import { CHALLENGES, getChallengeLevel } from "@/game/challenges";
+import { rankStoryRun } from "@/game/ranking";
 
 export default function Stage() {
   const { stage } = useParams();
@@ -12,9 +13,11 @@ export default function Stage() {
   const [searchParams] = useSearchParams();
   const [save] = useState(() => loadSave());
   const isLevelSelect = searchParams.get("levelSelect") === "1";
+  const newWorldRun = searchParams.get("newWorld") === "1";
   const challengeId = Number(searchParams.get("challenge")) || 0;
   const challenge = CHALLENGES.find((item) => item.id === challengeId) || null;
   const level = useMemo(() => (challenge && getChallengeLevel(challenge.id)) || getLevel(stage), [challenge?.id, stage]);
+  const isNewWorldStage = NEW_WORLD_STAGES.includes(level.id) || level.id === NEW_WORLD_FINAL_STAGE;
   const challengeConfig = challenge ? { ...challenge, weapons: [searchParams.get("w1") || "buster", searchParams.get("w2") || "blade"] } : null;
   const levelSelectChar = Number.isInteger(Number(searchParams.get("char")))
     ? Number(searchParams.get("char"))
@@ -31,7 +34,7 @@ export default function Stage() {
     if (!save || (challenge && (!isLevelSelectUnlocked(save) || (challenge.id > 1 && !(save.challengeEmblems || []).includes(challenge.id - 1)))) || (!isStageUnlocked(save, level.id) && !isLevelSelectUnlocked(save))) return undefined;
     const briefingTimer = setTimeout(() => {
       setBriefing(false);
-      if (isLevelSelect || challenge) setTimerActive(true);
+      setTimerActive(true);
     }, 1800);
     return () => clearTimeout(briefingTimer);
   }, [level.id, save, isLevelSelect, challenge]);
@@ -48,11 +51,17 @@ export default function Stage() {
 
   if (!save) return null;
 
+  if (newWorldRun && !isNewWorldStage) return <Navigate to="/world" replace />;
+  if (isNewWorldStage && (!newWorldRun || isLevelSelect || !hasPostgameUnlock(save) || !isStageUnlocked(save, level.id))) {
+    return <Navigate to={hasPostgameUnlock(save) ? "/new-world" : "/world"} replace />;
+  }
+  if (!challenge && SECRET_STAGES.includes(level.id) && (isLevelSelect || !isStageUnlocked(save, level.id))) return <Navigate to="/world" replace />;
+
   if (challenge && (!isLevelSelectUnlocked(save) || (challenge.id > 1 && !(save.challengeEmblems || []).includes(challenge.id - 1)))) {
     return <div className="pa-root flex min-h-screen flex-col items-center justify-center px-6 text-center"><Lock className="h-8 w-8 text-[#ffd166]"/><p className="pa-pixel mt-5 text-[10px] text-white">CHALLENGE LOCKED</p><p className="mt-3 text-sm text-[#c6d2f2]/55">Clear the campaign and earn the previous emblem to continue.</p><button onClick={() => navigate("/level-select-map")} className="pa-pixel mt-6 border border-[#4be3ff]/50 px-5 py-3 text-[8px] text-[#4be3ff]">CHALLENGE MODE</button></div>;
   }
 
-  if (!isStageUnlocked(save, level.id) && !isLevelSelectUnlocked(save)) {
+  if (!isStageUnlocked(save, level.id) && !(isLevelSelect && isLevelSelectUnlocked(save))) {
     return (
       <div className="pa-root flex min-h-screen flex-col items-center justify-center px-6 text-center">
         <Lock className="h-8 w-8 text-[#c6d2f2]/30" />
@@ -81,11 +90,12 @@ export default function Stage() {
     const timeBonus = Math.max(0, 300 - runTimer) * 10;
     const score =
       1000 +
-      payload.shards * 100 +
+      payload.collected * 100 +
       payload.coins * 10 +
       (payload.noDeath ? 500 : 0) +
       timeBonus;
     setRunScore((s) => s + score);
+    const storyRank = !challenge && !isLevelSelect ? rankStoryRun(runTimer, payload.deaths || 0, level.width) : null;
     const result = challenge
       ? { save: completeChallenge(challenge.id), orbGain: 0 }
       : completeStage(level.id, {
@@ -93,6 +103,9 @@ export default function Stage() {
           noDeath: payload.noDeath,
           coins: payload.coins,
           coinsTotal: payload.coinsTotal,
+          rank: storyRank,
+          time: runTimer,
+          score: runScore + score,
         });
     setClear({
       shards: payload.shards,
@@ -111,6 +124,9 @@ export default function Stage() {
       coinsTotal: payload.coinsTotal,
       runTimer,
       runScore: runScore + score,
+      deaths: payload.deaths || 0,
+      storyRank,
+      storyMode: !challenge && !isLevelSelect,
       isLevelSelect: isLevelSelect || Boolean(challenge),
       challenge: challenge?.id,
       emblemCode: challenge?.code,
@@ -125,13 +141,13 @@ export default function Stage() {
           level={level}
           save={{ ...save, character: isLevelSelect || challenge ? levelSelectChar : save.character }}
           onComplete={handleComplete}
-          onOutOfLives={() => setWiped(true)}
-          onRestart={() => setRunId((value) => value + 1)}
-          onQuit={() => navigate(challenge || isLevelSelect ? "/level-select-map" : "/world")}
+          onOutOfLives={() => { setTimerActive(false); setWiped(true); }}
+          onRestart={() => { setRunTimer(0); setRunScore(0); setRunId((value) => value + 1); }}
+          onPauseChange={(paused) => setTimerActive(!paused)}
+          onQuit={() => navigate(challenge || isLevelSelect ? "/level-select-map" : newWorldRun ? "/new-world" : "/world")}
           onScore={(amount) => setRunScore((s) => s + amount)}
           timer={runTimer}
           score={runScore}
-          isLevelSelect={isLevelSelect || Boolean(challenge)}
           challenge={challengeConfig}
         />
       ) : (
@@ -147,10 +163,12 @@ export default function Stage() {
             <p className="pa-pixel mt-5 text-[9px] text-[#c6d2f2]/55">{challenge?.subtitle || `ENTERING STAGE ${String(level.id).padStart(2, "0")}`}</p>
             <h1 className="pa-pixel pa-title mt-4 text-xl leading-relaxed text-white sm:text-3xl">{challenge?.title || level.name}</h1>
             <div className="mx-auto mt-7 flex max-w-sm items-center justify-center gap-3 border-y border-[#2a2f52] py-4">
-              <Gem className="h-4 w-4 shrink-0" style={{ color: level.accent }} />
+              {level.starCurrency ? <Star className="h-4 w-4 shrink-0" style={{ color: level.accent }} /> : <Gem className="h-4 w-4 shrink-0" style={{ color: level.accent }} />}
               <p className="pa-pixel text-[7px] leading-relaxed text-[#c6d2f2]/65">
                 {challenge
                   ? "SURVIVE THE FULL GAUNTLET · CLEAR THE TRIAL TO EARN ITS EMBLEM"
+                  : level.starCurrency
+                  ? "COLLECT FIVE STARS · CLEAR THE STAGE"
                   : level.id === 10
                   ? "DEFEAT THE VOID CORE · CLAIM THE GRAND GEM"
                   : "FIND FIVE SHARDS · CLEAR FLAWLESSLY FOR THE BONUS"}
@@ -186,6 +204,9 @@ export default function Stage() {
           nextStage={clear.nextStage}
           runTimer={clear.runTimer ?? 0}
           runScore={clear.runScore ?? 0}
+          deaths={clear.deaths ?? 0}
+          storyRank={clear.storyRank}
+          storyMode={clear.storyMode ?? false}
           isLevelSelect={clear.isLevelSelect ?? false}
           challengeReward={clear.challenge ? { id: clear.challenge, code: clear.emblemCode } : null}
           onNextStage={() =>
@@ -195,7 +216,7 @@ export default function Stage() {
                 : `/stage/${clear.nextStage}`
             )
           }
-          onContinue={() => navigate(challenge ? "/level-select-map" : isLevelSelect ? "/level-select-map" : "/world")}
+          onContinue={() => navigate(challenge ? "/level-select-map" : isLevelSelect ? "/level-select-map" : newWorldRun ? "/new-world" : "/world")}
         />
       ) : null}
       {wiped ? (
@@ -218,6 +239,9 @@ export default function Stage() {
                   type="button"
                   onClick={() => {
                     setWiped(false);
+                    setRunTimer(0);
+                    setRunScore(0);
+                    setTimerActive(true);
                     setRunId((value) => value + 1);
                   }}
                   className="pa-pixel flex min-h-11 items-center justify-center gap-2 bg-[#ff3d8b] px-5 py-3 text-[8px] text-[#05060d] hover:bg-[#ff79ae]"
@@ -226,7 +250,7 @@ export default function Stage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate(challenge || isLevelSelect ? "/level-select-map" : "/world")}
+                  onClick={() => navigate(challenge || isLevelSelect ? "/level-select-map" : newWorldRun ? "/new-world" : "/world")}
                   className="pa-pixel flex min-h-11 items-center justify-center gap-2 border border-[#4be3ff]/50 px-5 py-3 text-[8px] text-[#4be3ff] hover:bg-[#4be3ff]/10"
                 >
                   <ArrowLeft className="h-3 w-3" /> {challenge ? "CHALLENGE MODE" : isLevelSelect ? "CHALLENGE MODE" : "WORLD MAP"}

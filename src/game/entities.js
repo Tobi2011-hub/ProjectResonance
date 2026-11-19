@@ -236,7 +236,7 @@ export function fireWeapon(type, player, { overdrive = false, mult = 1 } = {}) {
 
   return {
     kind: "buster",
-    weapon: "buster",
+    weapon: def.id,
     x: player.x + (facing > 0 ? player.w : -20),
     y: player.y + player.h * 0.42,
     w: 24,
@@ -848,7 +848,7 @@ export class Enemy {
           vy: Math.sin(angle) * 300,
           r: 5,
           life: 3,
-          damage: Math.round(65 * ENEMY_HEALTH_MULTIPLIER),
+          damage: Math.round(65 * ENEMY_HEALTH_MULTIPLIER * (this.challengeDamageMultiplier || 1)),
           color: this.variantStyle.accent,
         };
         this.shotCooldown = 1.7;
@@ -856,7 +856,7 @@ export class Enemy {
     }
 
     if (player && !player.dead && overlaps(this, player) && player.invuln <= 0) {
-      const damage = Math.round(ENEMY_DAMAGE * (this.variantStyle.contactMultiplier || 1));
+      const damage = Math.round(ENEMY_DAMAGE * (this.variantStyle.contactMultiplier || 1) * (this.challengeDamageMultiplier || 1));
       const dealt = player.hurt(damage, this.x + this.w / 2);
       if (dealt) sfx("hit");
     }
@@ -894,6 +894,7 @@ export class Enemy {
 const ATTACKS = ["dash", "spread", "leap"];
 /** Second phase adds three attacks and shortens every recovery window. */
 const ATTACKS_P2 = ["dash", "spread", "leap", "teleport", "rain", "sweep"];
+const ATTACKS_P3 = ["teleport", "rain", "sweep", "void-sweep", "gravity-well"];
 
 export class Boss {
   constructor(tx, groundRow, arena) {
@@ -905,7 +906,8 @@ export class Boss {
     this.minX = (arena?.minX ?? 0) * TILE;
     this.maxX = (arena?.maxX ?? 42) * TILE;
     this.groundY = groundRow * TILE;
-    this.hp = Math.round(1800 * ENEMY_HEALTH_MULTIPLIER);
+    this.ultimate = Boolean(arena?.ultimate);
+    this.hp = Math.round(1800 * ENEMY_HEALTH_MULTIPLIER * (this.ultimate ? 2.5 : 1));
     this.maxHp = this.hp;
     this.phaseOneMaxHp = this.maxHp;
     this.defense = 0.28;
@@ -924,6 +926,7 @@ export class Boss {
     this.spreadStage = 0;
     this.introTimer = 0;
     this.phaseTwo = false;
+    this.phaseThree = false;
     this.phaseTransitionTime = 0;
     this.phaseTransitionDuration = 2.2;
     this.invulnerable = false;
@@ -935,7 +938,7 @@ export class Boss {
   }
 
   get phase() {
-    return this.phaseTwo ? 2 : 1;
+    return this.phaseThree ? 3 : this.phaseTwo ? 2 : 1;
   }
 
   get alive() {
@@ -959,7 +962,7 @@ export class Boss {
   }
 
   chooseAttack() {
-    const table = this.phase === 2 ? ATTACKS_P2 : ATTACKS;
+    const table = this.phase === 3 ? ATTACKS_P3 : this.phase === 2 ? ATTACKS_P2 : ATTACKS;
     const pool = table.filter((a) => this.history.slice(-2).every((h) => h !== a) || this.history.length < 2);
     const options = pool.length ? pool : table;
     const pick = options[Math.floor(Math.random() * options.length)];
@@ -1026,7 +1029,7 @@ export class Boss {
       if (this.timer <= 0) this.beginAttack(player, engine);
     } else if (this.state === "dash") {
       this.timer -= dt;
-      this.vx = this.facing * (this.phase === 2 ? 440 : 360);
+      this.vx = this.facing * (this.phase === 3 ? 520 : this.phase === 2 ? 440 : 360);
       if (moveActorX(this, this.vx * dt, world)) {
         this.vx = 0;
         this.timer = Math.min(this.timer, 0.08);
@@ -1111,6 +1114,25 @@ export class Boss {
         sfx("plasma");
       }
       if (this.timer <= 0) this.toIdle(0.6);
+    } else if (this.state === "void-sweep") {
+      this.timer -= dt;
+      this.vx = 0;
+      this.applyGravity(dt);
+      if (this.sweepShots < 5 && this.timer < 1.45 - this.sweepShots * 0.22) {
+        this.sweepShots += 1;
+        engine?.fireVoidWave?.(this, player);
+      }
+      if (this.timer <= 0) this.toIdle(0.52);
+    } else if (this.state === "gravity-well") {
+      this.timer -= dt;
+      this.vx = 0;
+      this.applyGravity(dt);
+      this.rainTick -= dt;
+      if (this.rainTick <= 0 && this.timer > 0.2) {
+        this.rainTick = 0.22;
+        engine?.fireGravityWell?.(this, player);
+      }
+      if (this.timer <= 0) this.toIdle(0.52);
     }
 
     if (this.state === "dash" && overlaps(this, player) && player.invuln <= 0) {
@@ -1128,7 +1150,7 @@ export class Boss {
   beginAttack(player, engine) {
     this.state = this.next;
     this.spreadStage = 0;
-    const fast = this.phase === 2;
+    const fast = this.phase > 1;
     if (this.next === "dash") {
       this.timer = fast ? 0.75 : 0.9;
       sfx("dash");
@@ -1144,6 +1166,12 @@ export class Boss {
     } else if (this.next === "sweep") {
       this.timer = 1.35;
       this.sweepShots = 0;
+    } else if (this.next === "void-sweep") {
+      this.timer = 1.65;
+      this.sweepShots = 0;
+    } else if (this.next === "gravity-well") {
+      this.timer = 1.85;
+      this.rainTick = 0;
     } else {
       this.timer = 2.4;
       this.vy = -620;
@@ -1165,7 +1193,7 @@ export class Boss {
     if (this.phaseTwo) return;
     this.phaseTwo = true;
     this.defense = 0.18;
-    this.maxHp = Math.round(this.phaseOneMaxHp * 2.25);
+    this.maxHp = Math.round(this.phaseOneMaxHp * (this.ultimate ? 1.6 : 2.25));
     this.hp = 0;
     this.invulnerable = true;
     this.exoshield = false;
@@ -1177,6 +1205,24 @@ export class Boss {
     this.vy = 0;
     this.history = [];
     engine?.bossPhaseTwo?.(this);
+  }
+
+  startPhaseThree(engine) {
+    if (this.phaseThree) return;
+    this.phaseThree = true;
+    this.defense = 0.08;
+    this.maxHp = Math.round(this.phaseOneMaxHp * 1.2);
+    this.hp = 0;
+    this.invulnerable = true;
+    this.exoshield = false;
+    this.phaseTransitionTime = 0;
+    this.phaseTransitionDuration = 2.8;
+    this.state = "phase-transition";
+    this.timer = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.history = [];
+    engine?.bossPhaseThree?.(this);
   }
 
   breakExoshield() {
@@ -1195,6 +1241,10 @@ export class Boss {
     if (this.hp <= 0) {
       if (!this.phaseTwo) {
         this.startPhaseTwo(engine);
+        return false;
+      }
+      if (this.ultimate && !this.phaseThree) {
+        this.startPhaseThree(engine);
         return false;
       }
       this.state = "dead";

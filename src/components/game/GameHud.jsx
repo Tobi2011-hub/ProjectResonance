@@ -2,7 +2,7 @@
  * GAME HUD — compact tactical overlay. Everything is drawn from engine.buildHud():
  * HP, lives, resonance shards, ammo, coins, boss health, dash pips and loadout.
  */
-import { Coins, Gem, Heart, RotateCcw, Shield, Zap } from "lucide-react";
+import { Coins, Gem, Heart, RotateCcw, Shield, Zap, Clock3, Trophy, Star } from "lucide-react";
 import PixelFontText from "@/components/game/PixelFontText";
 import WeaponSprite from "@/components/game/WeaponSprite";
 import { ABILITIES, WEAPONS } from "@/game/core";
@@ -11,29 +11,34 @@ function Pip({ on, className = "" }) {
   return <span className={`h-1.5 w-3 ${on ? "bg-[#4be3ff]" : "bg-white/15"} ${className}`} />;
 }
 
-export default function GameHud({ hud, onReload, timer, score, retryGems = 0, isLevelSelect, arcade = false }) {
+export default function GameHud({ hud, onReload, timer = 0, score = 0, retryGems = 0, arcade = false, challengeMode = false, hudSettings = {} }) {
   if (!hud) return null;
   const healthPct = Math.max(0, Math.min(1, hud.health / hud.maxHealth));
   const bossPct = hud.bossMax ? Math.max(0, Math.min(1, hud.bossHp / hud.bossMax)) : 0;
-  const ammoPct = hud.maxAmmo ? Math.max(0, Math.min(1, (hud.ammo || 0) / hud.maxAmmo)) : 0;
-  const timerMinutes = Math.floor(timer / 60);
-  const timerSeconds = timer % 60;
+  const elapsed = Math.max(0, Math.floor(Number(timer) || 0));
+  const timerMinutes = Math.floor(elapsed / 60);
+  const timerSeconds = elapsed % 60;
   const timerText = `${String(timerMinutes).padStart(2, "0")}:${String(timerSeconds).padStart(2, "0")}`;
+  const accents = { cyan: "#4be3ff", violet: "#a78bfa", amber: "#ffd166", mint: "#7af6c8" };
+  const accent = accents[hudSettings.accent] || accents.cyan;
+  const scales = { compact: 0.88, standard: 1, large: 1.12 };
+  const scale = scales[hudSettings.scale] || scales.standard;
+  const opacity = Math.max(0.55, Math.min(1, Number(hudSettings.opacity) || 0.92));
 
   return (
-    <div className="pointer-events-none absolute inset-0 select-none">
+    <div className="pointer-events-none absolute inset-0 z-10 select-none" style={{ opacity, transform: `scale(${scale})`, transformOrigin: "top center" }}>
       {/* ---------- TOP BAR ---------- */}
       <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-[#05060d]/90 via-[#05060d]/45 to-transparent px-2 pb-4 pt-2 sm:px-4 sm:pt-3">
         <div className="flex items-start gap-3">
           {/* HP + lives */}
           <div className="min-w-0 flex-1 sm:max-w-[290px]">
-            <div className="relative border border-[#4be3ff]/25 bg-[#060a16]/80 px-2 py-1.5">
-              <span className="absolute -left-px -top-px h-2 w-2 border-l border-t border-[#4be3ff]" />
-              <span className="absolute -bottom-px -right-px h-2 w-2 border-b border-r border-[#4be3ff]" />
+            <div className="relative border bg-[#060a16]/80 px-2 py-1.5" style={{ borderColor: `${accent}55`, boxShadow: `inset 0 0 16px ${accent}08` }}>
+              <span className="absolute -left-px -top-px h-2 w-2 border-l border-t" style={{ borderColor: accent }} />
+              <span className="absolute -bottom-px -right-px h-2 w-2 border-b border-r" style={{ borderColor: accent }} />
               <div className="flex items-center justify-between">
-                <span className="pa-pixel flex items-center gap-1 text-[9px] text-[#7af6c8]">
+                <span className="pa-pixel flex items-center gap-1 text-[9px]" style={{ color: accent }}>
                   <Shield className="h-3.5 w-3.5" />
-                  <PixelFontText text="HP" className="text-[9px] text-[#7af6c8]" spacing={0.04} />
+                  <PixelFontText text="HP" className="text-[9px]" style={{ color: accent }} spacing={0.04} />
                 </span>
                 <span className="pa-pixel text-[10px] text-white">
                   {Math.ceil(hud.health)}
@@ -42,8 +47,8 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
               </div>
               <div className="relative mt-1.5 h-3.5 w-full border border-[#05060d] bg-[#0a0d1c]">
                 <div
-                  className="h-full bg-gradient-to-r from-[#1d8fb5] via-[#4be3ff] to-[#7af6c8] transition-[width] duration-150"
-                  style={{ width: `${healthPct * 100}%` }}
+                  className="h-full transition-[width] duration-150"
+                  style={{ width: `${healthPct * 100}%`, background: `linear-gradient(90deg, #1d8fb5, ${accent}, #7af6c8)` }}
                 />
                 <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent_0_8px,#05060d_8px_10px)] opacity-60" />
               </div>
@@ -53,7 +58,7 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
                     <Heart key={i} className="h-3.5 w-3.5 fill-[#ff3d8b] text-[#ff3d8b]" />
                   ))}
                 </div>
-                <div className="flex items-center gap-0.5">
+                {!arcade && !challengeMode ? <div className="flex items-center gap-0.5">
                   {hud.stage === 10 ? (
                     <>
                       <Gem
@@ -70,21 +75,25 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
                   ) : (
                     <>
                       {Array.from({ length: 6 }).map((_, i) => (
-                        <Gem
+                        hud.starCurrency ? <Star
                           key={i}
                           className="h-3.5 w-3.5"
                           style={{
                             color: i < hud.shards ? hud.accent : "rgba(255,255,255,0.2)",
                             fill: i < hud.shards ? hud.accent : "transparent",
                           }}
+                        /> : <Gem
+                          key={i}
+                          className="h-3.5 w-3.5"
+                          style={{ color: i < hud.shards ? hud.accent : "rgba(255,255,255,0.2)", fill: i < hud.shards ? hud.accent : "transparent" }}
                         />
                       ))}
                       <span className="pa-pixel ml-1 text-[7px]" style={{ color: hud.accent }}>
-                        {hud.collected}/{hud.totalShards} SHARDS
+                        {hud.collected}/{hud.totalShards} {hud.starCurrency ? "STARS" : "SHARDS"}
                       </span>
                     </>
                   )}
-                </div>
+                </div> : <span className="pa-pixel text-[6px] tracking-widest" style={{ color: accent }}>{arcade ? "ARCADE RUN" : "TRIAL RUN"}</span>}
               </div>
             </div>
 
@@ -113,11 +122,22 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
                 <PixelFontText text="DUAL" className="border border-[#ff3d8b]/50 px-1 text-[7px] text-[#ff3d8b]" spacing={0.04} />
               ) : null}
             </div>
+            <div className="mt-1.5 flex justify-center gap-1.5">
+              <div className="pa-hud-metric flex min-w-[64px] items-center gap-1.5 border px-2 py-1" style={{ borderColor: `${accent}66`, backgroundColor: `rgba(6,10,22,${opacity * 0.9})` }}>
+                <Clock3 className="h-3 w-3 shrink-0" style={{ color: accent }} />
+                <span className="min-w-0"><span className="pa-pixel block text-[5px] tracking-widest text-[#c6d2f2]/45">TIME</span><span className="pa-pixel block font-mono text-[8px] text-white">{timerText}</span></span>
+              </div>
+              <div className="pa-hud-metric flex min-w-[64px] items-center gap-1.5 border px-2 py-1" style={{ borderColor: `${accent}66`, backgroundColor: `rgba(6,10,22,${opacity * 0.9})` }}>
+                <Trophy className="h-3 w-3 shrink-0" style={{ color: accent }} />
+                <span className="min-w-0"><span className="pa-pixel block text-[5px] tracking-widest text-[#c6d2f2]/45">SCORE</span><span className="pa-pixel block font-mono text-[8px] text-white">{Math.max(0, Number(score) || 0).toLocaleString()}</span></span>
+              </div>
+            </div>
             {hud.bossVisible ? (
               <div className="mx-auto mt-1.5 w-[190px] max-w-full sm:w-[300px]">
                 <div className="flex items-center justify-between">
                   <span className="pa-pixel flex items-center gap-1 text-[8px] text-[#ff3d8b]">
-                    VOID CORE
+                    {hud.ultimateBoss ? "ECLIPSE CORE" : "VOID CORE"}
+                    {hud.bossPhase === 3 ? <span className="border border-[#7af6c8]/60 bg-[#7af6c8]/15 px-1 text-[7px] text-[#7af6c8]">PHASE 3</span> : null}
                     {hud.bossPhase === 2 ? (
                       <span className="border border-[#ff9f45]/60 bg-[#ff9f45]/15 px-1 text-[7px] text-[#ff9f45]">PHASE 2</span>
                     ) : null}
@@ -164,14 +184,7 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
                 ))}
               </div>
             ) : null}
-            {arcade ? (
-              <div className="mt-2 grid grid-cols-2 gap-1 border border-[#ffd166]/30 bg-[#100d08]/85 px-2 py-1.5 text-right">
-                <span className="pa-pixel text-[6px] text-[#ffd166]/65">SCORE</span>
-                <span className="pa-pixel text-[8px] font-mono text-[#ffd166]">{score}</span>
-                <span className="pa-pixel text-[6px] text-[#ffd166]/65">RETRY GEMS</span>
-                <span className="pa-pixel text-[8px] font-mono text-[#ffd166]">{retryGems}</span>
-              </div>
-            ) : null}
+            {arcade ? <div className="pa-hud-metric mt-1.5 flex items-center gap-1 border border-[#ffd166]/45 bg-[#100d08]/85 px-2 py-1"><Gem className="h-3 w-3 text-[#ffd166]"/><span className="pa-pixel text-[6px] text-[#ffd166]">RETRY {retryGems}</span></div> : null}
           </div>
         </div>
       </div>
@@ -179,7 +192,7 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
       {hud.phaseAlert ? (
         <div className="absolute inset-x-0 top-[42%] flex justify-center">
           <div className="pa-pixel border-y-2 border-[#ff9f45] bg-[#090b16]/90 px-8 py-3 text-center text-sm tracking-[0.3em] text-[#ffbf75] shadow-[0_0_40px_#ff9f4555] sm:px-14 sm:py-4 sm:text-xl">
-            PHASE 2
+            PHASE {hud.phaseAlertLevel || 2}
           </div>
         </div>
       ) : null}
@@ -254,18 +267,6 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
             <Gem className="h-2.5 w-2.5 text-[#ffd166]/60" />
             <span className="pa-pixel text-[5px] text-[#c6d2f2]/25">PROJECT: RESONANCE</span>
           </div>
-          {isLevelSelect ? (
-            <div className="ml-6 flex items-center gap-3 border-l border-white/10 pl-4">
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="pa-pixel text-[5px] text-[#ffd166]/70">TIME</span>
-                <span className={`pa-pixel text-[9px] font-mono text-[#4be3ff] pa-blink`}>{timerText}</span>
-              </div>
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="pa-pixel text-[5px] text-[#ffd166]/70">SCORE</span>
-                <span className={`pa-pixel text-[9px] font-mono text-[#ffd166]`}>{score}</span>
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
 

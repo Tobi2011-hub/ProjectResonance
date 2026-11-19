@@ -13,7 +13,6 @@ import {
 import {
   CHARACTERS,
   DEFAULT_CONTROLS,
-  MAX_STARS,
   SAVE_SLOT_COUNT,
   clearSave,
   getActiveSaveSlot,
@@ -25,6 +24,7 @@ import {
   setSfxVolume,
   sfx,
   totalStars,
+  visibleStoryMaxStars,
   writeSave,
 } from "@/game/core";
 
@@ -260,7 +260,7 @@ export default function Title() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-[#c6d2f2]/40">Resonance shards</dt>
-                  <dd className="text-[#4be3ff]">{save ? `${totalStars(save)} / ${MAX_STARS}` : "—"}</dd>
+                  <dd className="text-[#4be3ff]">{save ? `${totalStars(save)} / ${visibleStoryMaxStars(save)}` : "—"}</dd>
                 </div>
               </dl>
               <div className="mt-5 grid grid-cols-2 gap-2 border-t border-[#2a2f52] pt-4">

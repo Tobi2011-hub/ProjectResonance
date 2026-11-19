@@ -9,11 +9,11 @@ import {
   CHARACTERS,
   CONTROL_ROWS,
   DEFAULT_CONTROLS,
-  MAX_STARS,
   WEAPON_TYPES,
   keyLabel,
   stageStars,
   totalStars,
+  visibleStoryMaxStars,
 } from "@/game/core";
 import { FRUIT_POWERUPS } from "@/game/collectibles";
 import { ENEMY_VARIANTS } from "@/game/entities";
@@ -46,7 +46,7 @@ export function TitleLogo() {
         <span className="inline-block h-2 w-2 bg-[#ff3d8b]" />
         ACTION PLATFORMER
         <span className="h-px w-10 bg-[#4be3ff]/40" />
-        <span className="text-[#c6d2f2]/50">10 STAGES</span>
+        <span className="text-[#c6d2f2]/50">MAIN CAMPAIGN</span>
       </div>
       <h1 className="pa-pixel pa-title mt-5 text-[30px] leading-[1.3] sm:text-[40px] lg:text-[50px]">
         PROJECT:
@@ -54,7 +54,7 @@ export function TitleLogo() {
         RESONANCE
       </h1>
       <p className="mt-4 max-w-md text-sm font-medium tracking-wide text-[#c6d2f2]/70 sm:text-base">
-        Dash the gaps, kick off the walls, and cut through ten stages to the void core.
+        Dash the gaps, kick off the walls, and face the void core.
       </p>
     </div>
   );
@@ -119,7 +119,7 @@ export function LevelSelectPanel({ levels, onSelect, onBack }) {
   return (
     <PanelFrame tag="100% COMPLETE" title="LEVEL SELECT" onBack={onBack}>
       <div className="grid max-h-[60vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
-        {levels.map((level) => (
+        {levels.filter((level) => level.id <= 18).map((level) => (
           <button
             key={level.id}
             type="button"
@@ -127,7 +127,7 @@ export function LevelSelectPanel({ levels, onSelect, onBack }) {
             className="border border-[#2a2f52] bg-black/30 p-3 text-left transition-colors hover:border-[#4be3ff]/70 hover:bg-[#4be3ff]/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166]"
           >
             <span className="pa-pixel text-[7px] text-[#4be3ff]">
-              {level.id <= 10 ? `STAGE ${String(level.id).padStart(2, "0")}` : `SECRET ${String(level.id).padStart(2, "0")}`}
+              {level.id <= 10 ? `STAGE ${String(level.id).padStart(2, "0")}` : `RIFT ${String(level.id - 10).padStart(2, "0")}`}
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-white">{level.name}</span>
           </button>
@@ -175,7 +175,7 @@ export function SaveSlotsPanel({ slots, activeSlot, mode, onSelect, onErase, onB
                       {CHARACTERS[save.character]?.name || "Vanguard"} · Stage {save.highestStage}
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] tracking-wide text-[#c6d2f2]/60">
-                      <span>Stars: {totalStars(save)}/{MAX_STARS}</span>
+                      <span>Stars: {totalStars(save)}/{visibleStoryMaxStars(save)}</span>
                       <span>Stage 1: {stageStars(save, 1)}/5</span>
                       <span>Primary: {WEAPON_TYPES[save.primary]?.name}</span>
                       <span>Secondary: {WEAPON_TYPES[save.secondary]?.name}</span>
@@ -224,6 +224,8 @@ export function SettingsPanel({ settings, onChange, onBack, onFullscreenToggle }
   const [fullscreen, setFullscreen] = useState(() => Boolean(document.fullscreenElement));
   const [notice, setNotice] = useState("");
   const controls = { ...DEFAULT_CONTROLS, ...(settings.controls || {}) };
+  const hudSettings = { scale: "standard", accent: "cyan", opacity: 0.92, ...(settings.hud || {}) };
+  const updateHud = (patch) => onChange({ hud: { ...hudSettings, ...patch } });
 
   useEffect(() => {
     const updateFullscreen = () => setFullscreen(Boolean(document.fullscreenElement));
@@ -406,6 +408,44 @@ export function SettingsPanel({ settings, onChange, onBack, onFullscreenToggle }
             ], settings.backgrounds?.[key] || (key === "menu" ? "blue" : "purple"), (value) => onChange({ backgrounds: { ...(settings.backgrounds || {}), [key]: value } }))}
           </div>
         ))}
+        <div className="space-y-4 border border-[#2a2f52] bg-black/20 p-3">
+          <p className="pa-pixel text-[8px] tracking-widest text-[#4be3ff]">GAME HUD</p>
+          {selectSetting(
+            "HUD SIZE",
+            [
+              { value: "compact", label: "COMPACT" },
+              { value: "standard", label: "STANDARD" },
+              { value: "large", label: "LARGE" },
+            ],
+            hudSettings.scale,
+            (scale) => updateHud({ scale })
+          )}
+          {selectSetting(
+            "HUD ACCENT",
+            [
+              { value: "cyan", label: "CYAN" },
+              { value: "violet", label: "VIOLET" },
+              { value: "amber", label: "AMBER" },
+              { value: "mint", label: "MINT" },
+            ],
+            hudSettings.accent,
+            (accent) => updateHud({ accent })
+          )}
+          <div>
+            {row("HUD OPACITY", hudSettings.opacity)}
+            <input
+              type="range"
+              min="0.55"
+              max="1"
+              step="0.05"
+              value={hudSettings.opacity}
+              onChange={(event) => updateHud({ opacity: Number(event.target.value) })}
+              style={sliderStyle(hudSettings.opacity)}
+              className="pa-range-slider w-full"
+              aria-label="Game HUD opacity"
+            />
+          </div>
+        </div>
         <p className="-mt-2 text-xs text-[#c6d2f2]/40">
           Orientation locking is supported only by some mobile browsers and may require fullscreen.
         </p>
@@ -482,7 +522,7 @@ export function SettingsPanel({ settings, onChange, onBack, onFullscreenToggle }
             <section>
               <h3 className="pa-pixel text-[8px] text-white">COLLECTIBLES & STAGE OBJECTS</h3>
               <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-[#c6d2f2]/50">
-                <li><span className="text-[#ffd166]">Stars:</span> Find five in a stage; collecting all five in one run unlocks its rift. A no-death clear earns a sixth star.</li>
+                <li><span className="text-[#ffd166]">Stars:</span> Find five in a stage. A no-death clear earns a sixth star.</li>
                 <li><span className="text-[#ffd166]">Coins:</span> Take every coin in challenge stages 1, 3, and 5 to earn a weapon.</li>
                 <li><span className="text-[#4be3ff]">Ammo crates:</span> Refill your weapon reserves. Defeating enemies also restores a little ammo.</li>
                 <li>

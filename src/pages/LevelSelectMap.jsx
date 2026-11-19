@@ -250,7 +250,7 @@ export default function LevelSelectMap() {
             <polyline points={pathPoints} fill="none" strokeWidth="2" />
           </svg>
 
-          {LEVELS.map((level, index) => {
+          {LEVELS.slice(0, 10).map((level, index) => {
             const stage = index + 1;
             const pos = POSITIONS[index];
             const isSelected = selected === stage;

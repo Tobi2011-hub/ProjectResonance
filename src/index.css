@@ -503,6 +503,28 @@ canvas.pa-canvas {
   display: block;
 }
 
+.pa-hud-metric {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 14px rgba(75, 227, 255, 0.06), 0 3px 12px rgba(0, 0, 0, 0.32);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.pa-hud-metric::after {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 42%;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.65), transparent);
+  pointer-events: none;
+}
+
+.pa-result-stats {
+  box-shadow: inset 0 0 24px rgba(75, 227, 255, 0.04), 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
 .pa-touch-only {
   display: none;
 }

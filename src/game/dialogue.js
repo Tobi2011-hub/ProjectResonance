@@ -28,12 +28,12 @@ export const TUTORIALS = {
   5: [
     T("LIVES, PLURAL", "You get three tries per stage. Run out and the whole stage restarts, no hard feelings."),
     T("FLAWLESS", "Clear a stage without dying and earn the flawless shard. It is smug about it."),
-    T("COIN RUSH", "Stages 1, 3 and 5 hide ten coins. Take every one in a run to earn a secret weapon."),
+    T("COIN RUSH", "Stages 1, 3 and 5 hide ten coins. Take every one in a run to earn a weapon."),
   ],
   6: [
     T("UP AND OVER", "Stacked platforms mean the high route is usually faster and usually meaner."),
     T("NO FALL DAMAGE", "Falling does not hurt. Landing on a saw does. Physics is fair like that."),
-    T("MAGNETISM", "Some secrets pull you in. Literally, once you own the right ability."),
+    T("MAGNETISM", "Nearby pickups drift toward you once you own the right ability."),
   ],
   7: [
     T("SPEEDRUNNERS", "The dash has a cooldown. Chain ground dashes for distance, save the air dash for panic."),
@@ -61,4 +61,12 @@ export const TUTORIALS = {
   16: [T("VAULT: SHARD SHRINE", "Six resonance shards on Stage 2 opened this. Orbs, oodles of them.")],
   17: [T("VAULT: ECHO HOLLOW", "Six resonance shards on Stage 4. Echoes of every jump you ever missed.")],
   18: [T("VAULT: RESONANCE DEEP", "Six resonance shards on Stage 6. The deepest room in the project.")],
+  19: [T("ASHEN CAUSEWAY", "Keep your pace steady. The route gets rougher beyond the next rise.")],
+  20: [T("PRISM BREAK", "Watch the footing. The safest path may not be the fastest one.")],
+  21: [T("TEMPEST CROWN", "Use the upper route when the ground becomes dangerous.")],
+  22: [T("GILDED UNDERTOW", "Read each landing before committing to the next jump.")],
+  23: [T("FROSTLINE COLLAPSE", "The hazards are close together here. Keep moving between them.")],
+  24: [T("DUSK ENGINE", "Save your strongest attacks for the reinforced guards.")],
+  25: [T("SOLAR RUPTURE", "One last long route. Keep your focus to the exit.")],
+  26: [T("ECLIPSE HEART", "The core is unstable. Stay mobile while it changes its attack pattern.")],
 };

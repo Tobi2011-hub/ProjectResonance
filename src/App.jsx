@@ -11,6 +11,7 @@ import ScrollToTop from './components/ScrollToTop';
 import Title from './pages/Title';
 import Customize from './pages/Customize';
 import WorldMap from './pages/WorldMap';
+import NewWorldMap from './pages/NewWorldMap';
 import Stage from './pages/Stage';
 import Shop from './pages/Shop';
 import ChallengeMode from './pages/ChallengeMode';
@@ -47,6 +48,7 @@ const AuthenticatedApp = () => {
       <Route path="/" element={<Title />} />
       <Route path="/customize" element={<Customize />} />
       <Route path="/world" element={<WorldMap />} />
+      <Route path="/new-world" element={<NewWorldMap />} />
       <Route path="/stage/:stage" element={<Stage />} />
       <Route path="/level-select-map" element={<ChallengeMode />} />
       <Route path="/arcade" element={<ArcadeMode />} />

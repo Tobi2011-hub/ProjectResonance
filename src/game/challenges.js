@@ -46,8 +46,14 @@ export function getChallengeLevel(id) {
     const y = heights[patternIndex];
     const length = 7 + ((trial.id + index) % 3);
     platforms.push([x, y, length, ROWS - y]);
-    if (index > 0) {
-      const type = enemyTypes[(trial.id + index * 2) % enemyTypes.length];
+    // Keep long gauntlets readable: most rooms are traversal-focused, with
+    // deliberate enemy encounters every four platforms early on and every
+    // three platforms in the final trials, avoiding the old near-every-other-
+    // room density.
+    const encounterFrequency = trial.id >= 13 ? 3 : 4;
+    if (index > 0 && index % encounterFrequency === trial.id % encounterFrequency) {
+      const typePool = trial.id >= 13 ? enemyTypes : enemyTypes.slice(0, 4);
+      const type = typePool[(trial.id + index * 2) % typePool.length];
       enemies.push({ x: x + Math.floor(length / 2), y, minX: x + 1, maxX: x + length - 1, variant: type });
     }
     if (index > 1 && index % 2 === 0) {
@@ -67,7 +73,7 @@ export function getChallengeLevel(id) {
     const px = 18 + Math.floor((i * segmentCount) / Math.ceil(segmentCount / 4)) * 10;
     const py = 7 + ((i + trial.id) % 3);
     platforms.push([px, py, 3, 1]);
-    if (i % 2 === 0) enemies.push({ x: px + 1, y: py, minX: px, maxX: px + 2, variant: i % 3 ? "shielded" : "flyer" });
+    if (i % 6 === 2 && trial.id >= 10) enemies.push({ x: px + 1, y: py, minX: px, maxX: px + 2, variant: i % 3 ? "standard" : "flyer" });
   }
   const width = x + 8;
   const lastY = heights[(segmentCount - 1) % heights.length];

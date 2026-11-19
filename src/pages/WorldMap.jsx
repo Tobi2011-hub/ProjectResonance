@@ -1,21 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Gem, Info, Lock, Play, ShieldAlert, ShoppingBag, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Check, Gem, Info, Lock, Play, ShieldAlert, ShoppingBag, Sparkles, Star, X } from "lucide-react";
 import { PixelBackdrop } from "@/components/game/GameUI";
 import PixelFontText from "@/components/game/PixelFontText";
 import { LEVELS } from "@/game/world";
 import {
-  ABILITIES,
   CHARACTERS,
-  MAX_STARS,
+  ABILITIES,
   SECRET_ABILITIES,
   SECRET_STAGES,
+  COIN_CHALLENGE_STAGES,
+  COINS_PER_CHALLENGE_STAGE,
+  hasPostgameUnlock,
   WEAPON_TYPES,
   isStageUnlocked,
   loadSave,
   sfx,
   stageStars,
   totalStars,
+  visibleStoryMaxStars,
 } from "@/game/core";
 
 // One map node: icon (or padlock), shard badge and the selected tooltip.
@@ -104,6 +107,7 @@ export default function WorldMap() {
   const selectedShards = save?.stars?.[selected] || [];
   const grandGemCollected = Boolean(selectedShards[0]);
   const accent = level?.accent || "#4be3ff";
+  const CollectibleIcon = level?.starCurrency ? Star : Gem;
 
   const deploy = (stage = selected) => {
     if (!isStageUnlocked(save, stage)) {
@@ -147,8 +151,7 @@ export default function WorldMap() {
   }, [detailsOpen, selected, save]);
 
   const pathPoints = useMemo(() => POSITIONS.map((p) => `${p.x},${p.y}`).join(" "), []);
-  const secrets = SECRET_STAGES.map((id) => LEVELS[id - 1]);
-  const abilities = Object.keys(save?.abilities || {}).filter((key) => save.abilities[key]);
+  const riftLevels = SECRET_STAGES.map((id) => LEVELS[id - 1]);
 
   if (!save) return null;
 
@@ -169,13 +172,13 @@ export default function WorldMap() {
             <PixelFontText text={CHARACTERS[save.character]?.name || ""} className="text-[10px] text-[#c6d2f2]/40" spacing={0.04} />
             <span className="pa-pixel flex items-center gap-1 text-[10px] text-[#4be3ff]">
               <Gem className="h-3.5 w-3.5" />
-              <PixelFontText text={`${totalStars(save)}/${MAX_STARS}`} className="text-[10px] text-[#4be3ff]" spacing={0.04} />
+              <PixelFontText text={`${totalStars(save)}/${visibleStoryMaxStars(save)}`} className="text-[10px] text-[#4be3ff]" spacing={0.04} />
             </span>
             <span className="pa-pixel flex items-center gap-1 text-[10px] text-[#ffd166]">
               <Gem className="h-3.5 w-3.5" />
               <PixelFontText text={String(save.orbs || 0)} className="text-[10px] text-[#ffd166]" spacing={0.04} />
             </span>
-            <PixelFontText text={`STAGE ${save.highestStage}/10`} className="text-[10px] text-[#4be3ff]" spacing={0.04} />
+            <PixelFontText text={`STAGE ${Math.min(save.highestStage, 10)}/10`} className="text-[10px] text-[#4be3ff]" spacing={0.04} />
             <button
               type="button"
               onClick={() => navigate("/shop")}
@@ -241,8 +244,8 @@ export default function WorldMap() {
               <p className="pa-pixel mt-2 text-[14px] text-white">{level.name}</p>
               <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-[#c6d2f2]/45">
                 <span className="flex items-center gap-1" style={{ color: accent }}>
-                  <Gem className="h-3.5 w-3.5 fill-current" />
-                  <PixelFontText text={`SHARDS FOUND: ${stageStars(save, selected)}/6`} className="text-[10px]" style={{ color: accent }} spacing={0.04} />
+                  <CollectibleIcon className="h-3.5 w-3.5 fill-current" />
+                  <PixelFontText text={`${level.starCurrency ? "STARS" : "SHARDS"} FOUND: ${stageStars(save, selected)}/6`} className="text-[10px]" style={{ color: accent }} spacing={0.04} />
                 </span>
                 <span className="world-map__stage-meta">{cleared ? "Cleared" : unlocked ? "Ready" : "Locked"}</span>
                 <span className="world-map__stage-meta">Primary {WEAPON_TYPES[save.primary]?.name}</span>
@@ -265,6 +268,14 @@ export default function WorldMap() {
               </button>
               <button
                 type="button"
+                disabled={!hasPostgameUnlock(save)}
+                onClick={() => navigate("/new-world")}
+                className="pa-pixel grid min-h-[44px] min-w-[44px] touch-manipulation place-items-center border border-[#7af6c8]/50 px-3 py-2 text-[16px] text-[#7af6c8] transition-colors hover:border-[#7af6c8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166]"
+              >
+                ?
+              </button>
+              <button
+                type="button"
                 onClick={() => setDetailsOpen(true)}
                 className="pa-pixel flex min-h-[44px] touch-manipulation items-center justify-center gap-2 bg-[#4be3ff] px-4 py-2 text-[10px] text-[#05060d] transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166] sm:px-5 sm:py-3"
               >
@@ -276,57 +287,29 @@ export default function WorldMap() {
 
           <div className="pa-panel min-w-0 shrink-0 p-2 sm:p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="pa-pixel flex items-center gap-2 text-[8px] text-[#7af6c8]">
-                <Sparkles className="h-3 w-3" /> RIFT STAGES
-              </p>
+              <p className="pa-pixel flex items-center gap-2 text-[8px] text-[#7af6c8]"><Sparkles className="h-3 w-3" /> RIFT STAGES</p>
               <p className="pa-pixel hidden text-[7px] text-[#c6d2f2]/35 sm:block">FIVE SHARDS IN ONE RUN OPENS THE RIFT</p>
               <p className="pa-pixel text-[6px] text-[#c6d2f2]/35 sm:hidden">SWIPE FOR MORE</p>
             </div>
             <div className="world-map__secret-grid mt-2 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-2 sm:overflow-visible sm:pb-0">
-              {secrets.map((secret, i) => {
-                const open = isStageUnlocked(save, secret.id);
-                const ability = ABILITIES[SECRET_ABILITIES[secret.id]];
-                const owned = Boolean(save.abilities?.[SECRET_ABILITIES[secret.id]]);
-                return (
-                  <button
-                    key={secret.id}
-                    type="button"
-                    onClick={() => {
-                      setSelected(secret.id);
-                      setDetailsOpen(true);
-                      sfx("select");
-                    }}
-                    className={`group min-h-[48px] min-w-[132px] shrink-0 snap-start touch-manipulation border p-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166] sm:min-w-0 sm:shrink sm:p-3 ${
-                      open
-                        ? "border-[#7af6c8]/50 bg-[#7af6c8]/8 hover:border-[#7af6c8]"
-                        : "border-[#1b2038] bg-[#080a14] hover:border-[#ff3d8b]/40"
-                    }`}
-                  >
-                        <p className={`pa-pixel text-[7px] ${open ? "text-[#7af6c8]" : "text-[#c6d2f2]/25"}`}>
-                      {secret.starOf ? `VAULT ${i - 4} · STAGE ${secret.id}` : `RIFT ${i + 1} · STAGE ${secret.id}`}
-                    </p>
-                        <p className={`pa-pixel mt-1.5 text-[8px] ${open ? "text-white" : "text-[#c6d2f2]/40"}`}>
-                      {open ? secret.name.replace(/^(Rift|Vault): /, "") : "LOCKED"}
-                    </p>
-                    <p className={`mt-1.5 text-[11px] uppercase tracking-[0.14em] ${owned ? "text-[#ffd166]" : "text-[#c6d2f2]/35"}`}>
-                      {ability?.name || "ORB CACHE"}
-                    </p>
-                    <p className="pa-pixel mt-1 text-[7px] text-[#c6d2f2]/25">
-                      {secret.starOf
-                        ? `SIX SHARDS ON STAGE ${secret.starOf}`
-                        : owned
-                        ? "ACQUIRED"
-                        : `CLEAR STAGE ${secret.secretOf}`}
-                    </p>
-                  </button>
-                );
+              {riftLevels.map((rift, index) => {
+                const open = isStageUnlocked(save, rift.id);
+                const abilityId = SECRET_ABILITIES[rift.id];
+                const ability = ABILITIES[abilityId];
+                const owned = Boolean(save.abilities?.[abilityId]);
+                return <button
+                  key={rift.id}
+                  type="button"
+                  onClick={() => { setSelected(rift.id); setDetailsOpen(true); sfx("select"); }}
+                  className={`group min-h-[48px] min-w-[132px] shrink-0 snap-start touch-manipulation border p-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ffd166] sm:min-w-0 sm:shrink sm:p-3 ${open ? "border-[#7af6c8]/50 bg-[#7af6c8]/8 hover:border-[#7af6c8]" : "border-[#1b2038] bg-[#080a14] hover:border-[#ff3d8b]/40"}`}
+                >
+                  <p className={`pa-pixel text-[7px] ${open ? "text-[#7af6c8]" : "text-[#c6d2f2]/25"}`}>{rift.starOf ? `VAULT ${index - 4} · STAGE ${rift.id}` : `RIFT ${index + 1} · STAGE ${rift.id}`}</p>
+                  <p className={`pa-pixel mt-1.5 text-[8px] ${open ? "text-white" : "text-[#c6d2f2]/40"}`}>{open ? rift.name.replace(/^(Rift|Vault): /, "") : "LOCKED"}</p>
+                  <p className={`mt-1.5 text-[11px] uppercase tracking-[0.14em] ${owned ? "text-[#ffd166]" : "text-[#c6d2f2]/35"}`}>{ability?.name || "ORB CACHE"}</p>
+                  <p className="pa-pixel mt-1 text-[7px] text-[#c6d2f2]/25">{rift.starOf ? `SIX SHARDS ON STAGE ${rift.starOf}` : owned ? "ACQUIRED" : `CLEAR STAGE ${rift.secretOf}`}</p>
+                </button>;
               })}
             </div>
-            {abilities.length ? (
-              <p className="world-map__abilities pa-pixel mt-3 text-[7px] text-[#7af6c8]/70">
-                ACTIVE ABILITIES: {abilities.map((key) => ABILITIES[key]?.name.toUpperCase()).join(" · ")}
-              </p>
-            ) : null}
           </div>
         </main>
 
@@ -363,10 +346,10 @@ export default function WorldMap() {
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="border border-[#2a2f52] bg-[#070a18]/80 p-4">
                   <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">
-                    {selected === 10 ? "GRAND GEM" : "RESONANCE SHARDS"}
+                    {selected === 10 ? "GRAND GEM" : level.starCurrency ? "STARS" : "RESONANCE SHARDS"}
                   </p>
                   <p className="pa-pixel mt-3 flex items-center gap-2 text-[10px]" style={{ color: accent }}>
-                    <Gem className="h-4 w-4 fill-current" />
+                    <CollectibleIcon className="h-4 w-4 fill-current" />
                     {selected === 10
                       ? grandGemCollected ? "CLAIMED" : "NOT CLAIMED"
                       : `${selectedShards.slice(0, 5).filter(Boolean).length} / 5 FOUND`}
@@ -378,12 +361,12 @@ export default function WorldMap() {
                       : `${selectedShards.slice(0, 5).filter(Boolean).length} of 5 resonance shards found`}
                   >
                     {selected === 10 ? (
-                      <Gem
+                      <CollectibleIcon
                         className={`h-7 w-7 ${grandGemCollected ? "fill-current" : "text-[#2a2f52]"}`}
                         style={grandGemCollected ? { color: accent } : undefined}
                       />
                     ) : Array.from({ length: 5 }, (_, index) => (
-                      <Gem
+                      <CollectibleIcon
                         key={index}
                         className={`h-5 w-5 ${selectedShards[index] ? "fill-current" : "text-[#2a2f52]"}`}
                         style={selectedShards[index] ? { color: accent } : undefined}
@@ -400,6 +383,41 @@ export default function WorldMap() {
                   <p className="mt-3 text-xs tracking-wide text-[#c6d2f2]/45">
                     {cleared ? "Stage cleared" : "Not cleared yet"}
                   </p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {COIN_CHALLENGE_STAGES.includes(selected) ? (
+                  <div className="border border-[#ffd166]/25 bg-[#070a18]/80 p-4">
+                    <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">COINS COLLECTED</p>
+                    <p className="pa-pixel mt-3 flex items-center gap-2 text-[10px] text-[#ffd166]">
+                      <span aria-hidden="true">●</span>
+                      {`${(save.collectedCoins?.[selected] || []).filter(Boolean).length} / ${COINS_PER_CHALLENGE_STAGE}`}
+                    </p>
+                  </div>
+                ) : null}
+                <div className={`border border-[#2a2f52] bg-[#070a18]/80 p-4 ${COIN_CHALLENGE_STAGES.includes(selected) ? "" : "sm:col-span-2"}`}>
+                  <p className="pa-pixel text-[8px] text-[#c6d2f2]/55">BEST RUN</p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div>
+                      <p className="pa-pixel text-[7px] text-[#c6d2f2]/35">TIME</p>
+                      <p className="pa-pixel mt-1 text-[10px] text-[#4be3ff]">
+                        {save.stageRecords?.[selected]?.bestTime
+                          ? `${String(Math.floor(save.stageRecords[selected].bestTime / 60)).padStart(2, "0")}:${String(save.stageRecords[selected].bestTime % 60).padStart(2, "0")}`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="pa-pixel text-[7px] text-[#c6d2f2]/35">SCORE</p>
+                      <p className="pa-pixel mt-1 text-[10px] text-[#ffd166]">
+                        {save.stageRecords?.[selected]?.bestScore?.toLocaleString?.() || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="pa-pixel text-[7px] text-[#c6d2f2]/35">RANK</p>
+                      <p className="pa-pixel mt-1 text-[10px] text-[#c084fc]">{save.storyRanks?.[selected] || "—"}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

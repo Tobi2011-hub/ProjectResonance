@@ -17,7 +17,7 @@
  *  NOT SAFE: the export names — other files import them by name.
  * ============================================================================
  */
-import { CHALLENGE_WEAPONS, WEAPONS } from "./weapons";
+import { CHALLENGE_WEAPONS, SECRET_WEAPON_REWARDS, SECRET_WEAPONS, WEAPONS } from "./weapons";
 import { LOCKED_CHARACTERS, LOCKED_PALETTES } from "./palettes";
 
 // ---------------------------------------------------------------------------
@@ -757,11 +757,13 @@ export const SAVE_SLOT_COUNT = 5;
 export const ACTIVE_SAVE_SLOT_KEY = "pixel-adventure-active-save-slot-v1";
 export const MAIN_STAGES = 10;
 export const SECRET_STAGES = [11, 12, 13, 14, 15, 16, 17, 18];
-/** These rifts only open once the parent stage holds all six stars. */
 export const STAR_SECRETS = { 16: 2, 17: 4, 18: 6 };
-export const TOTAL_STAGES = MAIN_STAGES + SECRET_STAGES.length;
+export const NEW_WORLD_STAGES = [19, 20, 21, 22, 23, 24, 25];
+export const NEW_WORLD_FINAL_STAGE = 26;
+export const ORIGINAL_STAGES = [...Array.from({ length: MAIN_STAGES }, (_, index) => index + 1), ...SECRET_STAGES];
+export const TOTAL_STAGES = NEW_WORLD_FINAL_STAGE;
 export const STARS_PER_STAGE = 6;
-export const MAX_STARS = TOTAL_STAGES * STARS_PER_STAGE;
+export const MAX_STARS = ORIGINAL_STAGES.length * STARS_PER_STAGE;
 export const COIN_CHALLENGE_STAGES = [1, 3, 5];
 export const COINS_PER_CHALLENGE_STAGE = 10;
 
@@ -780,6 +782,8 @@ export {
   WEAPON_ORDER,
   BASE_WEAPONS,
   CHALLENGE_WEAPONS,
+  SECRET_WEAPON_REWARDS,
+  SECRET_WEAPONS,
   DUAL,
   isAmmoWeapon,
 } from "./weapons";
@@ -794,6 +798,7 @@ export const ABILITIES = {
 };
 
 export const SECRET_ABILITIES = { 11: "leap", 12: "phase", 13: "glide", 14: "magnet", 15: "overdrive" };
+
 export const CHARACTER_SKILLS = Object.fromEntries(CHARACTERS.map((character, index) => [index, character.startingAbility]));
 export const MAX_ABILITY_RANK = 2;
 
@@ -824,6 +829,8 @@ export const createDefaultSave = () => ({
   secondary: "blade",
   highestStage: 1,
   cleared: [],
+  storyRanks: {},
+  stageRecords: {},
   secrets: [],
   stars: emptyStars(),
   abilities: {},
@@ -846,6 +853,7 @@ export const createDefaultSave = () => ({
     mobileOrientation: "landscape",
     highContrast: false,
     backgrounds: { menu: "blue", map: "purple", shop: "purple" },
+    hud: { scale: "standard", accent: "cyan", opacity: 0.92 },
     controls: { ...DEFAULT_CONTROLS },
   },
   savedAt: null,
@@ -907,6 +915,7 @@ function normalize(parsed) {
   };
   save.settings = { ...base.settings, ...(parsed.settings || {}) };
   save.settings.backgrounds = { ...base.settings.backgrounds, ...(parsed.settings?.backgrounds || {}) };
+  save.settings.hud = { ...base.settings.hud, ...(parsed.settings?.hud || {}) };
   save.arcadeEmblem = Boolean(parsed.arcadeEmblem);
   save.settings.controls = { ...DEFAULT_CONTROLS, ...((parsed.settings || {}).controls || {}) };
   save.abilities = addCharacterStarterAbility(Object.fromEntries(
@@ -925,6 +934,17 @@ function normalize(parsed) {
     save.stars[key] = list.slice(0, STARS_PER_STAGE);
   });
   save.cleared = Array.isArray(parsed.cleared) ? parsed.cleared : [];
+  save.highestStage = Math.max(1, Math.min(MAIN_STAGES, Math.floor(Number(parsed.highestStage) || 1)));
+  save.storyRanks = parsed.storyRanks && typeof parsed.storyRanks === "object"
+    ? Object.fromEntries(Object.entries(parsed.storyRanks).filter(([stage, grade]) => Number(stage) >= 1 && Number(stage) <= TOTAL_STAGES && ["S", "A", "B", "C", "D"].includes(grade)))
+    : {};
+  save.stageRecords = parsed.stageRecords && typeof parsed.stageRecords === "object"
+    ? Object.fromEntries(Object.entries(parsed.stageRecords).map(([stage, record]) => [stage, {
+        bestTime: Math.max(0, Number(record?.bestTime) || 0),
+        bestScore: Math.max(0, Number(record?.bestScore) || 0),
+        bestCoins: Math.max(0, Number(record?.bestCoins) || 0),
+      }]))
+    : {};
   save.secrets = Array.isArray(parsed.secrets) ? parsed.secrets : [];
   save.orbs = Math.max(0, Number(parsed.orbs) || 0);
   save.unlockedCharacters = Array.isArray(parsed.unlockedCharacters) ? parsed.unlockedCharacters : [];
@@ -1002,7 +1022,34 @@ export function stageStars(save, stage) {
 }
 
 export function totalStars(save) {
-  return Object.values(save?.stars || {}).reduce((sum, list) => sum + list.filter(Boolean).length, 0);
+  return Object.entries(save?.stars || {}).reduce((sum, [stage, list]) => ORIGINAL_STAGES.includes(Number(stage)) ? sum + list.filter(Boolean).length : sum, 0);
+}
+
+export function hasAllStageCollectibles(save, stages) {
+  return stages.every((stage) => {
+    const needed = stage === 10 ? 1 : 5;
+    return (save?.stars?.[stage] || []).slice(0, needed).filter(Boolean).length === needed;
+  });
+}
+
+export function hasPostgameUnlock(save) {
+  if (!save) return false;
+  const stages = ORIGINAL_STAGES;
+  return stages.every((stage) => (save.cleared || []).includes(stage) && save.storyRanks?.[stage] === "S") && hasAllStageCollectibles(save, stages);
+}
+
+export function hasFinalSecretUnlock(save) {
+  if (!save || !hasPostgameUnlock(save)) return false;
+  const stages = NEW_WORLD_STAGES;
+  return stages.every((stage) => (save.cleared || []).includes(stage) && save.storyRanks?.[stage] === "S") && hasAllStageCollectibles(save, stages);
+}
+
+export function visibleStoryStageCount(save) {
+  return MAIN_STAGES;
+}
+
+export function visibleStoryMaxStars(save) {
+  return MAX_STARS;
 }
 
 export function isLevelSelectUnlocked(save) {
@@ -1031,26 +1078,37 @@ export function isStageUnlocked(save, stage) {
   if (stage <= 1) return true;
   if (!save) return false;
   if (STAR_SECRETS[stage]) return stageStars(save, STAR_SECRETS[stage]) >= STARS_PER_STAGE;
-  if (SECRET_STAGES.includes(stage)) return (save.secrets || []).includes(stage);
+  if (SECRET_STAGES.slice(0, 5).includes(stage)) return (save.secrets || []).includes(stage);
+  if (NEW_WORLD_STAGES.includes(stage)) return hasPostgameUnlock(save);
+  if (stage === NEW_WORLD_FINAL_STAGE) return hasFinalSecretUnlock(save);
+  if (stage > MAIN_STAGES) return false;
   if ((save.highestStage || 1) >= stage) return true;
   return (save.cleared || []).includes(stage - 1);
 }
 
-export function completeStage(stage, { collected = 0, noDeath = false, coins = 0, coinsTotal = 0 } = {}) {
+export function completeStage(stage, { collected = 0, noDeath = false, coins = 0, coinsTotal = 0, rank = null, time = 0, score = 0 } = {}) {
   const save = loadSave() || createDefaultSave();
   const cleared = new Set([...(save.cleared || []), stage]);
   const secrets = new Set(save.secrets || []);
   const abilities = { ...save.abilities };
   const stars = { ...save.stars };
+  const storyRanks = { ...save.storyRanks };
+  const stageRecords = { ...save.stageRecords };
+  const previousRecord = stageRecords[stage] || {};
+  stageRecords[stage] = {
+    bestTime: previousRecord.bestTime ? Math.min(previousRecord.bestTime, Math.max(0, time)) : Math.max(0, time),
+    bestScore: Math.max(previousRecord.bestScore || 0, Math.max(0, score)),
+    bestCoins: Math.max(previousRecord.bestCoins || 0, Math.max(0, coins)),
+  };
   const unlockedWeapons = new Set(save.unlockedWeapons || []);
-  let unlockedSecret = null;
   let unlockedAbility = null;
   let replacementAbility = null;
   let abilityRank = 0;
   let abilityUpgraded = false;
   let unlockedWeapon = null;
+  let unlockedSecret = null;
 
-  if (stage <= 5 && collected >= STARS_COLLECTIBLE) {
+  if (stage >= 1 && stage <= 5 && collected >= STARS_COLLECTIBLE) {
     const secret = stage + 10;
     if (!secrets.has(secret)) {
       secrets.add(secret);
@@ -1058,18 +1116,30 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
     }
   }
 
-  if (SECRET_STAGES.includes(stage)) {
+  if (rank?.grade) {
+    const order = ["S", "A", "B", "C", "D"];
+    const oldRank = storyRanks[stage];
+    if (!oldRank || order.indexOf(rank.grade) < order.indexOf(oldRank)) storyRanks[stage] = rank.grade;
+  }
+
+  if (SECRET_ABILITIES[stage]) {
     const ability = SECRET_ABILITIES[stage];
-    if (ability) {
-      const currentRank = Number(abilities[ability]) || 0;
-      abilityRank = Math.min(MAX_ABILITY_RANK, currentRank + 1);
-      abilityUpgraded = currentRank > 0 && abilityRank > currentRank;
-      unlockedAbility = ability;
-      abilities[ability] = abilityRank;
-      if (currentRank > 0 && !abilities.wallcling) {
-        replacementAbility = "wallcling";
-        abilities[replacementAbility] = 1;
-      }
+    const currentRank = Number(abilities[ability]) || 0;
+    abilityRank = Math.min(MAX_ABILITY_RANK, currentRank + 1);
+    abilityUpgraded = currentRank > 0 && abilityRank > currentRank;
+    unlockedAbility = ability;
+    abilities[ability] = abilityRank;
+    if (currentRank > 0 && !abilities.wallcling) {
+      replacementAbility = "wallcling";
+      abilities[replacementAbility] = 1;
+    }
+  }
+
+  if (SECRET_WEAPON_REWARDS[stage]) {
+    const reward = SECRET_WEAPON_REWARDS[stage];
+    if (!unlockedWeapons.has(reward)) {
+      unlockedWeapon = reward;
+      unlockedWeapons.add(reward);
     }
   }
 
@@ -1082,7 +1152,7 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
   }
 
   const orbGain =
-    (SECRET_STAGES.includes(stage) ? 80 : 40) +
+    (stage > MAIN_STAGES && stage <= 18 ? 80 : 40) +
     collected * 5 +
     Math.max(0, coins) * 2 +
     (coinsTotal > 0 && coins >= coinsTotal ? 20 : 0) +
@@ -1094,6 +1164,8 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
     secrets: Array.from(secrets),
     abilities,
     stars,
+    storyRanks,
+    stageRecords,
     unlockedWeapons: Array.from(unlockedWeapons),
     orbs: (save.orbs || 0) + orbGain,
     highestStage: MAIN_STAGES >= stage ? Math.min(MAIN_STAGES, Math.max(save.highestStage || 1, stage + 1)) : save.highestStage,
@@ -1119,7 +1191,7 @@ export function saveCheckpoint(stage, checkpointIndex) {
 export function isWeaponOwned(save, id) {
   const weapon = WEAPONS[id];
   if (!weapon) return false;
-  if (["rail", "seeker", "lance"].includes(id)) return (save?.unlockedWeapons || []).includes(id);
+  if (["rail", "seeker", "lance", ...SECRET_WEAPONS].includes(id)) return (save?.unlockedWeapons || []).includes(id);
   return true;
 }
 

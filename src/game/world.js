@@ -16,7 +16,7 @@
  *  Math.round calls is what makes sprites shimmer.
  * ============================================================================
  */
-import { COINS_PER_CHALLENGE_STAGE, ROWS, TILE, VIEW_H, VIEW_W } from "./core";
+import { COINS_PER_CHALLENGE_STAGE, ROWS, RUN_SPEED, TILE, VIEW_H, VIEW_W, clamp } from "./core";
 import { CLOUD_URLS, THEME_CLOUDS } from "./clouds";
 import { TUTORIALS } from "./dialogue";
 import { WEAPONS } from "./weapons";
@@ -212,8 +212,16 @@ export function drawChar(ctx, assets, prefix, animKey, time, dx, dy, dw, dh, fli
   if (!img) return;
   const source = tint ? tintSprite(img, tint.body, tint.accent, sheet.imgKey, tint.glow) : img;
   const availableFrames = Math.max(1, Math.floor(img.width / anim.fw) * Math.floor(img.height / anim.fh));
-  const frame = Math.floor(time * anim.fps * ANIMATION_RATE) % Math.min(anim.frames, availableFrames);
-  drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
+  const frameTotal = Math.min(anim.frames, availableFrames);
+  const cycleRate = (anim.fps * ANIMATION_RATE) / frameTotal;
+  const phase = time * Math.PI * 2 * cycleRate;
+  const frame = Math.floor(time * anim.fps * ANIMATION_RATE) % frameTotal;
+  // Add pixel-aligned secondary motion to playable idle/run poses. The sheets
+  // supply the main action; this keeps the stance alive at every display size.
+  const scale = Math.max(1, Math.min(dw, dh) / 32);
+  const idleBreath = prefix !== "en" && animKey === "idle" ? Math.round((Math.sin(phase) + 1) * 0.5 * scale) : 0;
+  const runBounce = prefix !== "en" && animKey === "run" ? Math.round(Math.max(0, Math.sin(phase)) * scale) : 0;
+  drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy - idleBreath - runBounce, dw, dh, flip);
 }
 
 export function drawEnemyAnim(ctx, assets, animKey, time, dx, dy, dw, dh, flip = false, tint = null) {
@@ -503,6 +511,7 @@ function buildStage(cfg) {
     starOf: cfg.starOf || null,
     ability: cfg.ability || null,
     reward: cfg.reward || null,
+    starCurrency: Boolean(cfg.starCurrency),
   };
 }
 
@@ -539,19 +548,36 @@ const STAGE_ACCENTS = {
   16: "#e18bff",
   17: "#6ce9a8",
   18: "#7b9dff",
+  19: "#70d5ff",
+  20: "#d18cff",
+  21: "#78f0df",
+  22: "#b8dc70",
+  23: "#ff9d67",
+  24: "#e18bff",
+  25: "#6ce9a8",
+  26: "#b28cff",
 };
 
-const SECRETS = [
+const RIFTS = [
   { id: 11, name: "Rift: Aerial Ascent", theme: "cyan", width: 300, seed: 1111, hard: 0.5, secretOf: 1, ability: "leap", reward: "AERIAL LEAP" },
   { id: 12, name: "Rift: Glass Gauntlet", theme: "violet", width: 330, seed: 1212, hard: 0.62, secretOf: 2, ability: "phase", reward: "PHASE DASH" },
   { id: 13, name: "Rift: Windward Spires", theme: "blue", width: 360, seed: 1313, hard: 0.7, secretOf: 3, ability: "glide", reward: "FEATHERFALL" },
   { id: 14, name: "Rift: Deep Vault", theme: "brown", width: 390, seed: 1414, hard: 0.78, secretOf: 4, ability: "magnet", reward: "SHARD MAGNET" },
   { id: 15, name: "Rift: Overdrive Foundry", theme: "yellow", width: 420, seed: 1515, hard: 0.86, secretOf: 5, ability: "overdrive", reward: "OVERDRIVE" },
-  // Perfect-clear vaults open when the parent stage has every shard.
   { id: 16, name: "Vault: Shard Shrine", theme: "purple", width: 400, seed: 1616, hard: 0.66, starOf: 2, reward: "ORBS" },
   { id: 17, name: "Vault: Echo Hollow", theme: "violet", width: 440, seed: 1717, hard: 0.74, starOf: 4, reward: "ORBS" },
   { id: 18, name: "Vault: Resonance Deep", theme: "cyan", width: 480, seed: 1818, hard: 0.84, starOf: 6, reward: "ORBS" },
 ];
+
+const POSTGAME = [
+  { id: 19, name: "Ashen Causeway", theme: "brown", width: 2450, seed: 1911, hard: 0.86 },
+  { id: 20, name: "Prism Break", theme: "purple", width: 2560, seed: 2012, hard: 0.92 },
+  { id: 21, name: "Tempest Crown", theme: "cyan", width: 2670, seed: 2113, hard: 0.98 },
+  { id: 22, name: "Gilded Undertow", theme: "yellow", width: 2780, seed: 2214, hard: 1.04 },
+  { id: 23, name: "Frostline Collapse", theme: "blue", width: 2890, seed: 2315, hard: 1.1 },
+  { id: 24, name: "The Dusk Engine", theme: "violet", width: 3000, seed: 2416, hard: 1.16 },
+  { id: 25, name: "Solar Rupture", theme: "pink", width: 3110, seed: 2517, hard: 1.22 },
+].map((stage) => ({ ...stage, starCurrency: true, postgame: true }));
 
 const BOSS_ARENA_OFFSET = 260;
 const BOSS_ARENA_FLOOR = [14, 15, 29, 2];
@@ -573,6 +599,7 @@ const BOSS_ARENA = {
     cameraX: 224,
     collisionPlatforms: [BOSS_ARENA_FLOOR],
     grandGem: [29, 14],
+    ultimate: false,
   },
 };
 
@@ -646,12 +673,37 @@ const BOSS_STAGE = (() => {
     boss: arenaBoss,
     secretOf: null,
     starOf: null,
+    starCurrency: false,
     ability: null,
     reward: null,
   };
 })();
 
-export const LEVELS = [...MAIN.map(buildStage), BOSS_STAGE, ...SECRETS.map(buildStage)];
+function fiveStars(level) {
+  const platforms = level.platforms.filter(([, , width]) => width >= 2);
+  return [0.12, 0.3, 0.5, 0.7, 0.88].map((fraction) => {
+    const target = Math.floor(level.width * fraction);
+    const surface = platforms
+      .filter(([x]) => x < target + 12)
+      .sort((a, b) => Math.abs(a[0] + a[2] / 2 - target) - Math.abs(b[0] + b[2] / 2 - target))[0];
+    return surface ? [surface[0] + Math.floor(surface[2] / 2), Math.max(2, surface[1] - 1)] : [target, 10];
+  });
+}
+
+const ULTIMATE_STAGE = {
+  ...BOSS_STAGE,
+  id: 26,
+  name: "Eclipse Heart",
+  accent: "#b28cff",
+  stars: [],
+  starCurrency: true,
+  postgame: true,
+  grandGem: null,
+  boss: { ...BOSS_STAGE.boss, ultimate: true, grandGem: null },
+};
+ULTIMATE_STAGE.stars = fiveStars(ULTIMATE_STAGE);
+
+export const LEVELS = [...MAIN.map(buildStage), BOSS_STAGE, ...RIFTS.map(buildStage), ...POSTGAME.map(buildStage), ULTIMATE_STAGE];
 
 export function getLevel(id) {
   return LEVELS.find((level) => level.id === Number(id)) || LEVELS[0];
@@ -1217,6 +1269,19 @@ function drawShardShape(ctx, cx, cy, size) {
   ctx.closePath();
 }
 
+function drawStarShape(ctx, cx, cy, size) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i += 1) {
+    const angle = -Math.PI / 2 + i * Math.PI / 5;
+    const radius = i % 2 === 0 ? size : size * 0.46;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
 export function drawShards(ctx, engine) {
   const { camera, time, shardEntities, level, grandGem } = engine;
   const accent = level.accent || "#4be3ff";
@@ -1231,11 +1296,11 @@ export function drawShards(ctx, engine) {
     ctx.translate(-cx, -cy);
     ctx.shadowColor = accent;
     ctx.shadowBlur = 18;
-    drawShardShape(ctx, cx, cy, 10);
+    (level.starCurrency ? drawStarShape : drawShardShape)(ctx, cx, cy, 10);
     ctx.fillStyle = "#f4fbff";
     ctx.fill();
     ctx.shadowBlur = 0;
-    drawShardShape(ctx, cx, cy, 7);
+    (level.starCurrency ? drawStarShape : drawShardShape)(ctx, cx, cy, 7);
     ctx.fillStyle = accent;
     ctx.fill();
     ctx.beginPath();
@@ -1439,17 +1504,20 @@ export function drawBoss(ctx, engine) {
   const dy = Math.round(boss.y + boss.h - size + 6);
 
   const p2 = boss.phaseTwo || boss.phase === 2;
+  const p3 = boss.phaseThree || boss.phase === 3;
+  const auraColor = p3 ? "rgba(126,72,255,0.92)" : p2 ? "rgba(255,122,61,0.9)" : "rgba(255,61,139,0.8)";
+  const edgeColor = p3 ? "#7af6c8" : p2 ? "#ff9f45" : "#ff3d8b";
   const charge = boss.state === "telegraph";
   ctx.save();
-  ctx.globalAlpha = charge ? 0.72 : p2 ? 0.55 : 0.35;
-  const aura = ctx.createRadialGradient(dx + size / 2, dy + size / 2, 4, dx + size / 2, dy + size / 2, size * (p2 ? 0.85 : 0.7));
-  aura.addColorStop(0, p2 ? "rgba(255,122,61,0.9)" : "rgba(255,61,139,0.8)");
-  aura.addColorStop(1, "rgba(255,61,139,0)");
+  ctx.globalAlpha = charge ? 0.8 : p3 ? 0.7 : p2 ? 0.55 : 0.35;
+  const aura = ctx.createRadialGradient(dx + size / 2, dy + size / 2, 4, dx + size / 2, dy + size / 2, size * (p3 ? 1.1 : p2 ? 0.85 : 0.7));
+  aura.addColorStop(0, auraColor);
+  aura.addColorStop(1, p3 ? "rgba(122,246,200,0)" : "rgba(255,61,139,0)");
   ctx.fillStyle = aura;
   ctx.fillRect(dx - 24, dy - 24, size + 48, size + 48);
   if (charge) {
     ctx.globalAlpha = 0.45 + Math.sin(time * 32) * 0.25;
-    ctx.strokeStyle = p2 ? "#ff9f45" : "#ff3d8b";
+    ctx.strokeStyle = edgeColor;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(dx + size / 2, dy + size / 2, size * (0.55 + Math.sin(time * 24) * 0.035), 0, Math.PI * 2);
@@ -1464,7 +1532,7 @@ export function drawBoss(ctx, engine) {
     const groundY = dy + size - 5;
     ctx.save();
     ctx.globalAlpha = 0.55 + Math.sin(time * 32) * 0.3;
-    ctx.strokeStyle = p2 ? "#ff9f45" : "#ff3d8b";
+    ctx.strokeStyle = edgeColor;
     ctx.fillStyle = ctx.strokeStyle;
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -1486,11 +1554,23 @@ export function drawBoss(ctx, engine) {
     ctx.translate(dx + size / 2, dy + size / 2);
     ctx.rotate(time * 1.4);
     ctx.globalAlpha = 0.5;
-    ctx.fillStyle = "#ff9f45";
+    ctx.fillStyle = p3 ? "#7af6c8" : "#ff9f45";
     for (let i = 0; i < 8; i += 1) {
       ctx.rotate((Math.PI * 2) / 8);
       ctx.fillRect(size * 0.52, -2, 7, 4);
     }
+    ctx.restore();
+  }
+  if (p3) {
+    ctx.save();
+    ctx.translate(dx + size / 2, dy + size / 2);
+    ctx.rotate(-time * 2.1);
+    ctx.globalAlpha = 0.8;
+    ctx.strokeStyle = "#b28cff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.82, size * 0.42, Math.sin(time * 2) * 0.3, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -1500,6 +1580,7 @@ export function drawBoss(ctx, engine) {
   if (boss.state === "leap" || !boss.onGround) anim = "jump";
 
   ctx.save();
+  if (boss.ultimate) ctx.filter = p3 ? "hue-rotate(105deg) saturate(1.8)" : "hue-rotate(72deg) saturate(1.55)";
   if (boss.state === "telegraph") ctx.globalAlpha = 0.65 + Math.sin(time * 40) * 0.35;
   if (boss.state === "dash") {
     ctx.globalAlpha *= 0.18;
@@ -1541,7 +1622,7 @@ export function drawBoss(ctx, engine) {
     ctx.fillRect(barX - 2, barY - 2, barWidth + 4, 8);
     ctx.fillStyle = "#242a48";
     ctx.fillRect(barX, barY, barWidth, 4);
-    ctx.fillStyle = boss.phaseTwo ? "#ff9f45" : "#ff3d8b";
+    ctx.fillStyle = p3 ? "#7af6c8" : boss.phaseTwo ? "#ff9f45" : "#ff3d8b";
     ctx.fillRect(barX, barY, Math.round(barWidth * health), 4);
     if (boss.exoshield) {
       ctx.strokeStyle = "#4be3ff";
@@ -1586,7 +1667,10 @@ export function drawPlayer(ctx, engine) {
     ctx.shadowColor = "#4be3ff";
     ctx.shadowBlur = 5;
   }
-  drawChar(ctx, assets, player.character, player.anim, player.animTime, dx, dy, size, size, player.facing < 0, player.tint);
+  const runRate = player.anim === "run" && player.onGround
+    ? clamp(Math.abs(player.vx) / RUN_SPEED, 0.55, 1.25)
+    : 1;
+  drawChar(ctx, assets, player.character, player.anim, player.animTime * runRate, dx, dy, size, size, player.facing < 0, player.tint);
   ctx.restore();
 
   // The equipped pixel weapon is visible in hand and flashes when it fires.

@@ -4,7 +4,7 @@
  * All purchases are written straight into the save file.
  */
 import { ARMOR_PALETTES, LOCKED_CHARACTERS, LOCKED_PALETTES } from "./palettes";
-import { CHARACTERS, WEAPONS, isCharacterOwned, isWeaponOwned, loadSave, writeSave } from "./core";
+import { CHARACTERS, SECRET_WEAPONS, WEAPONS, isCharacterOwned, isWeaponOwned, loadSave, writeSave } from "./core";
 
 export const ORBS_PER_STAGE = 40;
 export const ORBS_PER_SECRET = 80;
@@ -48,7 +48,13 @@ export function buildShop(save) {
     swatch: [WEAPONS[id].color, "#ffffff"], owned: isWeaponOwned(save, id),
   }));
 
-  return [...characters, ...weapons, ...palettes];
+  const earnedWeapons = SECRET_WEAPONS.filter((id) => isWeaponOwned(save, id)).map((id) => ({
+    id: `weapon-${id}`, kind: "weapon", value: id, name: WEAPONS[id].name,
+    description: WEAPONS[id].description, price: 0,
+    swatch: [WEAPONS[id].color, "#ffffff"], owned: true,
+  }));
+
+  return [...characters, ...weapons, ...earnedWeapons, ...palettes];
 }
 
 /** Returns { ok, save, message }. Orbs are only spent when the purchase works. */

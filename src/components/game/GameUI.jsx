@@ -4,7 +4,7 @@
  * and the stage-clear card.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Gem, Heart, Maximize, Minimize, Pause, Play, RotateCcw, Settings, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowRight, Gem, Heart, Maximize, Minimize, Pause, Play, RotateCcw, Settings, Sparkles, Star, Trophy } from "lucide-react";
 import { loadAssets } from "@/game/world";
 import {
   ABILITIES,
@@ -92,6 +92,9 @@ export function ClearOverlay({
   autoReturn = false,
   runTimer = 0,
   runScore = 0,
+  deaths = 0,
+  storyRank = null,
+  storyMode = false,
   isLevelSelect = false,
   challengeReward = null,
   onContinue,
@@ -99,6 +102,8 @@ export function ClearOverlay({
 }) {
   const accent = level.accent || "#4be3ff";
   const isChallenge = Boolean(challengeReward);
+  const showRunStats = isLevelSelect || storyMode;
+  const displayedRank = storyMode && storyRank ? storyRank : rankForScore(runScore);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#04050b]/95 px-3 py-4 sm:px-5 sm:py-8">
       <section
@@ -118,10 +123,10 @@ export function ClearOverlay({
             <Trophy className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: accent }} />
           </div>
           <p className="pa-pixel mt-4 text-[8px] tracking-[0.3em]" style={{ color: accent }}>
-            {isChallenge ? "TRIAL COMPLETE · EMBLEM SECURED" : level.id === 10 ? "VOID CORE DESTROYED" : level.secretOf ? "RIFT CLEARED" : "MISSION COMPLETE"}
+            {isChallenge ? "TRIAL COMPLETE · EMBLEM SECURED" : level.id === 26 ? "ECLIPSE CORE DESTROYED" : level.id === 10 ? "VOID CORE DESTROYED" : "MISSION COMPLETE"}
           </p>
           <h2 className="pa-pixel pa-title mt-3 text-2xl leading-tight text-white sm:text-4xl">
-            {isChallenge ? "CHALLENGE CLEARED" : level.id === 10 ? "RESONANCE SECURED" : "VICTORY"}
+            {isChallenge ? "CHALLENGE CLEARED" : level.id === 26 ? "ECLIPSE CONQUERED" : level.id === 10 ? "RESONANCE SECURED" : "VICTORY"}
           </h2>
           <p className="mt-3 text-sm tracking-[0.16em] text-[#c6d2f2]/65 sm:text-base">
             STAGE {String(level.id).padStart(2, "0")} <span className="text-white/25">/</span> {level.name}
@@ -132,7 +137,8 @@ export function ClearOverlay({
             noDeath={noDeath}
             accent={accent}
             totalShards={level.id === 10 ? 1 : 5}
-            shardLabel={level.id === 10 ? "GRAND GEM" : "SHARDS"}
+            shardLabel={level.starCurrency ? "STARS" : level.id === 10 ? "GRAND GEM" : "SHARDS"}
+            starCurrency={Boolean(level.starCurrency)}
           /> : null}
 
           {challengeReward ? (
@@ -145,7 +151,7 @@ export function ClearOverlay({
 
           <div className={`mx-auto mt-6 grid max-w-xl gap-2 sm:gap-3 ${isChallenge ? "grid-cols-2" : "grid-cols-3"}`}>
             {[
-              ...(!isChallenge ? [{ label: level.id === 10 ? "GRAND GEM" : "SHARDS", value: `${collected} / ${level.id === 10 ? 1 : 5}`, icon: Gem }] : []),
+              ...(!isChallenge ? [{ label: level.starCurrency ? "STARS" : level.id === 10 ? "GRAND GEM" : "SHARDS", value: `${collected} / ${level.id === 10 ? 1 : 5}`, icon: level.starCurrency ? Star : Gem }] : []),
               { label: "LIVES LEFT", value: String(lives), icon: Heart },
               { label: "ORB REWARD", value: `+${orbGain}`, icon: Sparkles },
             ].map(({ label, value, icon: Icon }) => (
@@ -227,33 +233,35 @@ export function ClearOverlay({
             </div>
           ) : null}
 
-          {isLevelSelect ? (
-            <div className="mt-6 border border-[#ffd166]/30 bg-[#ffd166]/[0.05] px-5 py-4">
-              <div className="flex flex-col gap-2">
-                <p className="pa-pixel flex items-center justify-between gap-4 text-[8px] text-[#c6d2f2]/60">
+          {showRunStats ? (
+            <div className="pa-result-stats mt-6 border border-[#ffd166]/30 bg-[#070a18]/80 px-5 py-4">
+              <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
+                <p className="pa-pixel flex flex-col items-start gap-1 text-[7px] text-[#c6d2f2]/55">
                   <span>RUN TIME</span>
-                  <span className="font-mono text-[#4be3ff]">
-                    {Math.floor(runTimer / 60)}:{String(runTimer % 60).padStart(2, "0")}
+                  <span className="font-mono text-[10px] text-[#4be3ff]">
+                    {String(Math.floor(runTimer / 60)).padStart(2, "0")}:{String(runTimer % 60).padStart(2, "0")}
                   </span>
                 </p>
-                <p className="pa-pixel flex items-center justify-between gap-4 text-[8px] text-[#c6d2f2]/60">
+                <p className="pa-pixel flex flex-col items-start gap-1 text-[7px] text-[#c6d2f2]/55">
                   <span>SCORE</span>
-                  <span className="font-mono text-[#ffd166]">{runScore}</span>
+                  <span className="font-mono text-[10px] text-[#ffd166]">{runScore.toLocaleString()}</span>
                 </p>
-                <p className="pa-pixel flex items-center justify-center gap-4 text-[8px]">
-                  <span>RANK</span>
-                  <span className={`font-bold text-[14px] px-3 py-1 border border-current rounded`} style={{ color: rankForScore(runScore).color }}>
-                    {rankForScore(runScore).grade}
+                <p className="pa-pixel flex items-center gap-2 text-[7px]">
+                  <span className="text-[#c6d2f2]/55">RANK</span>
+                  <span className="flex h-9 w-9 items-center justify-center border text-lg font-bold" style={{ color: displayedRank.color, borderColor: `${displayedRank.color}88`, backgroundColor: `${displayedRank.color}18` }}>
+                    {displayedRank.grade}
                   </span>
                 </p>
+                {storyMode ? <p className="pa-pixel flex flex-col items-start gap-1 text-[7px] text-[#c6d2f2]/55"><span>DEATHS</span><span className="font-mono text-[10px] text-white">{deaths}</span></p> : null}
               </div>
+              {storyMode ? <p className="mt-3 border-t border-white/10 pt-2 text-left text-[11px] tracking-wide text-[#c6d2f2]/45">Story rank uses stage pace and deaths. Keep moving and stay alive to earn a higher grade.</p> : null}
             </div>
           ) : null}
 
           <div className="mt-7 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
               <p className="pa-pixel flex items-center justify-center gap-2 text-[7px] text-[#c6d2f2]/55 sm:justify-start">
               <Trophy className="h-3.5 w-3.5" style={{ color: accent }} />
-              {isChallenge ? "EMBLEM AND CODE ADDED TO YOUR SAVE" : level.id === 10 ? "FINAL RECORD SAVED" : `+${orbGain} ORBS ADDED TO YOUR SAVE`}
+              {isChallenge ? "EMBLEM AND CODE ADDED TO YOUR SAVE" : level.id === 10 || level.id === 26 ? "FINAL RECORD SAVED" : `+${orbGain} ORBS ADDED TO YOUR SAVE`}
             </p>
             {autoReturn ? (
               <p className="pa-pixel text-[7px] text-[#c6d2f2]/30">RETURNING TO WORLD MAP…</p>
@@ -285,10 +293,10 @@ export function ClearOverlay({
   );
 }
 
-export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, onQuit, onScore, timer, score, retryGems = 0, isLevelSelect, challenge, arcade = false, arcadeState = null }) {
+export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, onQuit, onScore, onPauseChange, timer, score, retryGems = 0, challenge, arcade = false, arcadeState = null }) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
-  const propsRef = useRef({ save, onComplete, onOutOfLives, onScore });
+  const propsRef = useRef({ save, onComplete, onOutOfLives, onScore, onPauseChange });
   const controls = { ...DEFAULT_CONTROLS, ...(save?.settings?.controls || {}) };
   const [hud, setHud] = useState(null);
   const [narrative, setNarrative] = useState(null);
@@ -307,7 +315,7 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
     ...(save?.settings || {}),
   }));
 
-  propsRef.current = { save, onComplete, onOutOfLives, onScore };
+  propsRef.current = { save, onComplete, onOutOfLives, onScore, onPauseChange };
 
   useEffect(() => {
     let disposed = false;
@@ -355,6 +363,7 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
       if (!engine) return;
       const next = value ?? !paused;
       setPaused(next);
+      propsRef.current.onPauseChange?.(next);
       if (!next) setShowSettings(false);
       engine.pause(next);
       sfx(next ? "back" : "select");
@@ -478,7 +487,7 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
             className="pa-canvas absolute inset-0 h-full w-full"
             style={{ touchAction: "none" }}
           />
-          <GameHud hud={hud} onReload={() => engineRef.current?.useReload()} timer={timer} score={score} retryGems={retryGems} isLevelSelect={isLevelSelect} arcade={arcade} />
+          <GameHud hud={hud} onReload={() => engineRef.current?.useReload()} timer={timer} score={score} retryGems={retryGems} arcade={arcade} challengeMode={Boolean(challenge)} hudSettings={settings.hud} />
 
           <button
             type="button"
