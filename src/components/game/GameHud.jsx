@@ -2,8 +2,9 @@
  * GAME HUD — compact tactical overlay. Everything is drawn from engine.buildHud():
  * HP, lives, resonance shards, ammo, coins, boss health, dash pips and loadout.
  */
-import { Coins, Crosshair, Gem, Heart, RotateCcw, Shield, Zap } from "lucide-react";
+import { Coins, Gem, Heart, RotateCcw, Shield, Zap } from "lucide-react";
 import PixelFontText from "@/components/game/PixelFontText";
+import WeaponSprite from "@/components/game/WeaponSprite";
 import { ABILITIES, WEAPONS } from "@/game/core";
 
 function Pip({ on, className = "" }) {
@@ -221,7 +222,7 @@ export default function GameHud({ hud, onReload, timer, score, retryGems = 0, is
                     <span className={`pa-pixel text-[5px] ${active ? "text-[#4be3ff]" : "text-white/30"}`}>
                       {i === 0 ? "PRIMARY" : "SECONDARY"}
                     </span>
-                    <Crosshair className="h-2 w-2" style={{ color: info?.color }} />
+                    <WeaponSprite sprite={info?.sprite} size={20} label={`${info?.name || weapon} equipped`} />
                   </div>
                   <p className={`pa-pixel mt-0.5 text-[7px] ${active ? "text-white" : "text-white/45"}`}>
                     {info?.name || weapon}

@@ -70,7 +70,7 @@ export default function Title() {
       {
         id: "level-select",
         label: "Challenge Mode",
-        meta: levelSelectUnlocked ? "6 TRIALS" : "LOCKED",
+        meta: levelSelectUnlocked ? "18 TRIALS" : "LOCKED",
       },
       { id: "load", label: "Load Game", meta: `${slots.filter((slot) => slot.save).length}/${SAVE_SLOT_COUNT} SLOTS` },
       { id: "arcade", label: "Arcade Mode", meta: save?.arcadeEmblem ? "ARCADE EMBLEM" : "ONE LIFE" },

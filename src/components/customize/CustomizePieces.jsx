@@ -3,10 +3,11 @@
  * armour swatches and weapon picker. Locked items (shop) show a padlock.
  */
 import { useEffect, useRef, useState } from "react";
-import { Crosshair, Lock, Sword, Zap } from "lucide-react";
+import { Lock } from "lucide-react";
 import { drawChar, loadAssets } from "@/game/world";
 import { ARMOR_PALETTES, LOCKED_PALETTES } from "@/game/palettes";
 import { ABILITIES } from "@/game/core";
+import WeaponSprite from "@/components/game/WeaponSprite";
 
 export { ARMOR_PALETTES };
 
@@ -213,11 +214,10 @@ export function AbilitySelect({ unlocked, loadout, onToggle, onRankChange, activ
   );
 }
 
-function WeaponIcon({ category, color }) {
-  const Icon = category === "melee" ? Sword : category === "mid" ? Zap : Crosshair;
+function WeaponIcon({ type }) {
   return (
-    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center border" style={{ borderColor: color, color }}>
-      <Icon className="h-3.5 w-3.5" />
+    <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center border" style={{ borderColor: type.color, backgroundColor: `${type.color}12` }}>
+      <WeaponSprite sprite={type.sprite} size={32} label={`${type.name} weapon`} />
     </span>
   );
 }
@@ -240,7 +240,7 @@ export function WeaponSelect({ title, value, onChange, active, types, order, loc
                 selected ? "border-[#4be3ff] bg-[#4be3ff]/10" : "border-[#2a2f52] hover:border-[#4be3ff]/50"
               } ${locked ? "opacity-60" : ""}`}
             >
-              <WeaponIcon category={type.category} color={type.color} />
+              <WeaponIcon type={type} />
               <span className="min-w-0 flex-1">
                 <span className="pa-pixel block text-[8px] text-white">
                   {type.name} <span className="text-[#c6d2f2]/35">· {type.range}</span>

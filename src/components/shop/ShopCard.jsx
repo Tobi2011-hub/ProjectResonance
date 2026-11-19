@@ -1,4 +1,6 @@
 import { Check, Gem } from "lucide-react";
+import { WEAPONS } from "@/game/core";
+import WeaponSprite from "@/components/game/WeaponSprite";
 
 /** One shop listing: art swatch, name, price and the buy button. */
 export default function ShopCard({ item, orbs, onBuy }) {
@@ -10,10 +12,9 @@ export default function ShopCard({ item, orbs, onBuy }) {
       }`}
     >
       <div className="flex items-start gap-3">
-        <div
-          className="h-12 w-12 shrink-0 border-2 border-[#05060d]"
-          style={{ background: `linear-gradient(135deg, ${item.swatch[0]}, ${item.swatch[1]})` }}
-        />
+        <div className="grid h-12 w-12 shrink-0 place-items-center border-2 border-[#05060d]" style={{ background: `linear-gradient(135deg, ${item.swatch[0]}35, ${item.swatch[1]}20)` }}>
+          {item.kind === "weapon" ? <WeaponSprite sprite={WEAPONS[item.value]?.sprite} size={40} label={`${item.name} weapon`} /> : null}
+        </div>
         <div className="min-w-0 flex-1">
           <p className="pa-pixel text-[8px] text-white">{item.name.toUpperCase()}</p>
           <p className="pa-pixel mt-1 text-[6px] text-[#4be3ff]/70">

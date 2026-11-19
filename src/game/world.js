@@ -82,6 +82,7 @@ THEMES.forEach((theme) => {
   MANIFEST[`bg_${theme}`] = `${BASE}/bg/${theme}.png`;
 });
 Object.assign(MANIFEST, {
+  weapon_sheet: `${BASE}/weapons-fantasy.png`,
   terrain: `${BASE}/terrain.png`,
   checkpoint_off: `${BASE}/items/checkpoint_off.png`,
   checkpoint_on: `${BASE}/items/checkpoint_on.png`,
@@ -182,6 +183,8 @@ export function tintSprite(img, body, accent, cacheKey, glow = accent) {
 
 export function drawFrame(ctx, img, fw, fh, frame, dx, dy, dw, dh, flip = false) {
   if (!img) return;
+  const drawX = Math.round(dx);
+  const drawY = Math.round(dy);
   const columns = Math.max(1, Math.floor(img.width / fw));
   const rows = Math.max(1, Math.floor(img.height / fh));
   const frameCount = columns * rows;
@@ -189,12 +192,13 @@ export function drawFrame(ctx, img, fw, fh, frame, dx, dy, dw, dh, flip = false)
   const sx = (safeFrame % columns) * fw;
   const sy = Math.floor(safeFrame / columns) * fh;
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   if (flip) {
-    ctx.translate(dx + dw / 2, dy);
+    ctx.translate(drawX + dw / 2, drawY);
     ctx.scale(-1, 1);
     ctx.drawImage(img, sx, sy, fw, fh, -dw / 2, 0, dw, dh);
   } else {
-    ctx.drawImage(img, sx, sy, fw, fh, dx, dy, dw, dh);
+    ctx.drawImage(img, sx, sy, fw, fh, drawX, drawY, dw, dh);
   }
   ctx.restore();
 }
@@ -1549,7 +1553,9 @@ export function drawBoss(ctx, engine) {
 export function drawPlayer(ctx, engine) {
   const { player, assets, camera, time, afterimages } = engine;
   if (player.dead) return;
-  const size = 30;
+  // Character sheets are authored on a 32px grid; drawing at native size
+  // avoids resampling shimmer as the player moves across the pixel grid.
+  const size = 32;
   const dx = Math.round(player.centerX - size / 2 - camera.x);
   const dy = Math.round(player.y + player.h - size);
 
@@ -1571,66 +1577,42 @@ export function drawPlayer(ctx, engine) {
     ctx.globalAlpha = 1;
   });
 
-  const blink = player.invuln > 0 ? 0.45 + Math.abs(Math.sin(time * 16)) * 0.4 : 1;
-  ctx.globalAlpha = blink;
+  // Keep the character fully visible while invulnerable. The old pulsing
+  // alpha made the sprite itself appear to flicker during every damage window.
+  ctx.save();
+  if (player.invuln > 0) {
+    ctx.shadowColor = "#4be3ff";
+    ctx.shadowBlur = 5;
+  }
   drawChar(ctx, assets, player.character, player.anim, player.animTime, dx, dy, size, size, player.facing < 0, player.tint);
-  ctx.globalAlpha = 1;
+  ctx.restore();
 
-  // the equipped weapon, visible in hand and flashing when it fires
+  // The equipped pixel weapon is visible in hand and flashes when it fires.
   const weaponType = engine.weapons?.[engine.slot] || "buster";
   const info = WEAPONS[weaponType] || WEAPONS.buster;
   const dir = player.facing;
   const firing = player.fireAnim > 0;
+  const weaponSheet = assets.weapon_sheet;
   ctx.save();
   ctx.translate(Math.round(player.centerX + dir * 6 - camera.x), Math.round(player.y + player.h * 0.46));
   ctx.scale(dir, 1);
-  ctx.fillStyle = "#0b1020";
-  ctx.fillRect(-3, -2, 7, 5);
-  ctx.fillStyle = info.color;
-  if (info.category === "melee") {
-    ctx.fillRect(4, -1, firing ? 26 : 13, 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.globalAlpha = firing ? 0.95 : 0.5;
-    ctx.fillRect(4, -1, firing ? 26 : 13, 1);
-    ctx.globalAlpha = 1;
-  } else if (info.id === "cyclone") {
-    ctx.beginPath();
-    ctx.moveTo(3, -4);
-    ctx.lineTo(13, -5);
-    ctx.lineTo(18, 0);
-    ctx.lineTo(13, 5);
-    ctx.lineTo(3, 4);
-    ctx.lineTo(8, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(10, -1, 4, 2);
-  } else if (info.id === "seeker") {
-    ctx.fillRect(3, -3, 12, 6);
-    ctx.beginPath();
-    ctx.moveTo(15, -3);
-    ctx.lineTo(20, 0);
-    ctx.lineTo(15, 3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(7, -1, 7, 2);
-  } else if (info.category === "mid") {
-    ctx.beginPath();
-    ctx.arc(firing ? 12 : 7, 0, firing ? 5 : 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect((firing ? 12 : 7) - 1, -1, 2, 2);
+  if (weaponSheet && info.sprite) {
+    const [spriteCol, spriteRow] = info.sprite;
+    ctx.imageSmoothingEnabled = false;
+    ctx.shadowColor = info.color;
+    ctx.shadowBlur = firing ? 12 : 3;
+    ctx.drawImage(weaponSheet, spriteCol * 32, spriteRow * 32, 32, 32, -8, -15, firing ? 28 : 24, 24);
+    ctx.shadowBlur = 0;
   } else {
-    ctx.fillRect(4, -2, firing ? 17 : 11, 4);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(firing ? 19 : 11, -1, 2, 2);
+    // Keep a readable fallback if the optional art sheet fails to load.
+    ctx.fillStyle = info.color;
+    ctx.fillRect(3, -2, firing ? 18 : 12, 4);
   }
   if (firing) {
     ctx.globalAlpha = 0.8;
     ctx.fillStyle = "#fff6c9";
     ctx.beginPath();
-    ctx.arc(info.category === "melee" ? 31 : 21, 0, 4, 0, Math.PI * 2);
+    ctx.arc(22, 0, 4, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();

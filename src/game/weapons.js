@@ -24,6 +24,7 @@ export const WEAPONS = {
     damage: 23,
     reach: 68,
     color: "#ffe066",
+    sprite: [0, 4],
     description: "Instant wide slash in front of you. No ammo, pure burst.",
   },
   plasma: {
@@ -35,6 +36,7 @@ export const WEAPONS = {
     damage: 24,
     maxAmmo: 36,
     color: "#7af6c8",
+    sprite: [2, 0],
     description: "Arcing bolt that detonates into an explosion on impact.",
   },
   buster: {
@@ -46,6 +48,7 @@ export const WEAPONS = {
     damage: 14,
     maxAmmo: 60,
     color: "#6ad1ff",
+    sprite: [7, 1],
     description: "High-speed laser round that pierces everything it touches.",
   },
   cyclone: {
@@ -57,6 +60,7 @@ export const WEAPONS = {
     damage: 27,
     maxAmmo: 30,
     color: "#ffb347",
+    sprite: [1, 2],
     description: "Throw a piercing energy disc that sweeps through enemies and returns to you.",
   },
 
@@ -70,6 +74,7 @@ export const WEAPONS = {
     damage: 46,
     maxAmmo: 16,
     color: "#ff3d8b",
+    sprite: [5, 3],
     description: "Charged lance. One shot punches through a whole line.",
   },
   seeker: {
@@ -81,6 +86,7 @@ export const WEAPONS = {
     damage: 34,
     maxAmmo: 24,
     color: "#a78bfa",
+    sprite: [8, 1],
     description: "Launch a guided missile that turns toward the nearest enemy.",
   },
   lance: {
@@ -92,6 +98,7 @@ export const WEAPONS = {
     damage: 34,
     reach: 86,
     color: "#7af6c8",
+    sprite: [5, 4],
     description: "Long energy blade. Reaches almost to mid-range. No ammo.",
   },
 };
