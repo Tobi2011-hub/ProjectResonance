@@ -43,7 +43,7 @@ export default function ChallengeMode() {
           {!available && <span className="absolute inset-0 bg-[#05060d]/45"/>}
         </button>;
       })}</section>
-      <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><p className="pa-pixel flex items-center gap-2 text-[7px] text-[#c6d2f2]/40"><Shield size={13}/> EVERY WEAPON AND FRAME AVAILABLE · DAMAGE REDUCED</p><p className="pa-pixel text-[7px] text-[#ffd166]">EMBLEMS {emblems.length} / {CHALLENGES.length}</p></footer>
+      <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><p className="pa-pixel flex items-center gap-2 text-[7px] text-[#c6d2f2]/40"><Shield size={13}/> ALL FRAMES + WEAPONS · BOOSTED TRIAL STATS · ONE LIFE</p><p className="pa-pixel text-[7px] text-[#ffd166]">EMBLEMS {emblems.length} / {CHALLENGES.length}</p></footer>
       </>}
     </main>
   </div>;

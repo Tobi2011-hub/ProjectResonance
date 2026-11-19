@@ -69,7 +69,15 @@ export default class GameEngine {
     this.level = level;
     this.assets = assets;
     this.save = save;
-    this.challenge = challenge;
+    // A modest trial-only combat boost helps players sustain the much longer
+    // gauntlets, while keeping each trial's unique restrictions intact.
+    this.challenge = challenge ? {
+      ...challenge,
+      damage: (challenge.damage ?? 1) * 1.6,
+      health: (challenge.health ?? 1) * 1.5,
+      speed: (challenge.speed ?? 1) * 1.12,
+      incoming: (challenge.incoming ?? 1) * 0.8,
+    } : null;
     this.arcade = arcade;
     this.arcadeState = arcadeState;
     this.settings = save.settings || {};
@@ -83,20 +91,20 @@ export default class GameEngine {
           ? save.abilityLoadout
           : Object.entries(save.abilities || {}).map(([id, rank]) => ({ id, rank })),
         save.abilities || {}
-      ).filter(() => !challenge?.noAbilities).map(({ id, rank }) => [id, rank])
+        ).filter(() => !this.challenge?.noAbilities).map(({ id, rank }) => [id, rank])
     );
 
     // ---- loadout --------------------------------------------------------
     // Same weapon in both slots = dual wield: double fire rate, +30% damage,
     // half the ammo, and the pilot runs on 720 HP instead of 1200.
-    const primary = WEAPONS[challenge?.weapons?.[0]] ? challenge.weapons[0] : WEAPONS[save.primary] ? save.primary : "buster";
-    const secondary = WEAPONS[challenge?.weapons?.[1]] ? challenge.weapons[1] : WEAPONS[save.secondary] ? save.secondary : "blade";
+    const primary = WEAPONS[this.challenge?.weapons?.[0]] ? this.challenge.weapons[0] : WEAPONS[save.primary] ? save.primary : "buster";
+    const secondary = WEAPONS[this.challenge?.weapons?.[1]] ? this.challenge.weapons[1] : WEAPONS[save.secondary] ? save.secondary : "blade";
     this.weapons = [primary, secondary];
     this.dual = primary === secondary;
-    this.damageMult = (this.dual ? DUAL.damage : 1) * PLAYER_DAMAGE_MULTIPLIER * (challenge?.damage ?? 1);
-    this.cooldownMult = (this.dual ? 1 / DUAL.fireRate : 1) * (challenge?.cooldown || 1);
+    this.damageMult = (this.dual ? DUAL.damage : 1) * PLAYER_DAMAGE_MULTIPLIER * (this.challenge?.damage ?? 1);
+    this.cooldownMult = (this.dual ? 1 / DUAL.fireRate : 1) * (this.challenge?.cooldown || 1);
     this.maxHealth = this.dual ? DUAL.health : MAX_HEALTH;
-    if (challenge) this.maxHealth = Math.round(this.maxHealth * (challenge.health || 1));
+    if (this.challenge) this.maxHealth = Math.round(this.maxHealth * (this.challenge.health || 1));
     this.baseDamageMult = this.damageMult;
     this.offscreenTime = 0;
 
@@ -105,7 +113,7 @@ export default class GameEngine {
       armor: save.armor,
       abilities: this.abilities,
       maxHealth: this.maxHealth,
-      challenge,
+      challenge: this.challenge,
     });
     if (arcadeState?.health > 0) this.player.health = Math.min(this.maxHealth, arcadeState.health);
 
@@ -159,7 +167,9 @@ export default class GameEngine {
       powerup: randomFruitPowerup(),
     }));
 
-    this.lives = arcade ? 1 : START_LIVES;
+    this.lives = arcade
+      ? Math.max(1, Math.min(3, Number(arcadeState?.lives) || 3))
+      : this.challenge ? 1 : START_LIVES;
     this.deaths = 0;
     this.hitstop = 0;
 

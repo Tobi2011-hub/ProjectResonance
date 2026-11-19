@@ -592,35 +592,40 @@ export function burst(effects, x, y, options = {}) {
     spread = Math.PI * 2,
     angle = 0,
   } = options;
-  for (let i = 0; i < count; i += 1) {
+  const particleCount = Math.ceil(count * 1.2);
+  const boostedSpeed = speed * 1.12;
+  const boostedLife = life * 1.18;
+  for (let i = 0; i < particleCount; i += 1) {
     const a = angle + (Math.random() - 0.5) * spread;
-    const mag = speed * (0.35 + Math.random() * 0.85);
+    const mag = boostedSpeed * (0.35 + Math.random() * 0.85);
     effects.particles.push({
       x,
       y,
       vx: Math.cos(a) * mag,
-      vy: Math.sin(a) * mag - speed * 0.2,
+      vy: Math.sin(a) * mag - boostedSpeed * 0.2,
       gravity,
-      life: life * (0.6 + Math.random() * 0.7),
-      max: life,
+      life: boostedLife * (0.6 + Math.random() * 0.7),
+      max: boostedLife,
       color,
-      size: size + Math.random() * size,
+      size: (size + Math.random() * size) * 1.08,
     });
   }
 }
 
 export function spark(effects, x, y, dir, options = {}) {
   const { color = "#ffffff", count = 7, speed = 240, life = 0.28 } = options;
-  for (let i = 0; i < count; i += 1) {
+  const sparkCount = Math.ceil(count * 1.2);
+  const boostedLife = life * 1.16;
+  for (let i = 0; i < sparkCount; i += 1) {
     const a = (dir >= 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.5;
-    const mag = speed * (0.4 + Math.random() * 0.9);
+    const mag = speed * 1.1 * (0.4 + Math.random() * 0.9);
     effects.sparks.push({
       x,
       y,
       vx: Math.cos(a) * mag,
       vy: Math.sin(a) * mag,
-      life: life * (0.5 + Math.random() * 0.8),
-      max: life,
+      life: boostedLife * (0.5 + Math.random() * 0.8),
+      max: boostedLife,
       color,
       len: 2 + Math.random() * 5,
     });
@@ -628,7 +633,8 @@ export function spark(effects, x, y, dir, options = {}) {
 }
 
 export function ring(effects, x, y, radius, color = "#ffffff", life = 0.3) {
-  effects.rings.push({ x, y, radius, color, life, max: life });
+  const boostedLife = life * 1.18;
+  effects.rings.push({ x, y, radius: radius * 1.08, color, life: boostedLife, max: boostedLife });
 }
 
 export function dust(effects, x, y, dir = 0) {
@@ -652,7 +658,7 @@ export function shake(effects, amount) {
 }
 
 export function addFlash(effects, x, y, radius, color = "#ffe066") {
-  effects.flashes.push({ x, y, radius, color, life: 0.28, max: 0.28 });
+  effects.flashes.push({ x, y, radius: radius * 1.08, color, life: 0.32, max: 0.32 });
 }
 
 export function updateEffects(effects, dt) {

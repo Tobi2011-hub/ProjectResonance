@@ -40,6 +40,8 @@ export const CHAR_ANIMS = {
   djump: { frames: 6, fw: 32, fh: 32, fps: 14 },
 };
 
+const ANIMATION_RATE = 1.2;
+
 export const ENEMY_ANIMS = {
   idle: { frames: 24, fw: 30, fh: 30, fps: 12 },
   run: { frames: 10, fw: 30, fh: 30, fps: 14 },
@@ -210,7 +212,7 @@ export function drawChar(ctx, assets, prefix, animKey, time, dx, dy, dw, dh, fli
   if (!img) return;
   const source = tint ? tintSprite(img, tint.body, tint.accent, sheet.imgKey, tint.glow) : img;
   const availableFrames = Math.max(1, Math.floor(img.width / anim.fw) * Math.floor(img.height / anim.fh));
-  const frame = Math.floor(time * anim.fps) % Math.min(anim.frames, availableFrames);
+  const frame = Math.floor(time * anim.fps * ANIMATION_RATE) % Math.min(anim.frames, availableFrames);
   drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
 }
 
@@ -219,7 +221,7 @@ export function drawEnemyAnim(ctx, assets, animKey, time, dx, dy, dw, dh, flip =
   const img = assets[`enemy_${animKey}`];
   if (!img) return;
   const availableFrames = Math.max(1, Math.floor(img.width / anim.fw) * Math.floor(img.height / anim.fh));
-  const frame = Math.floor(time * anim.fps) % Math.min(anim.frames, availableFrames);
+  const frame = Math.floor(time * anim.fps * ANIMATION_RATE) % Math.min(anim.frames, availableFrames);
   const source = tint ? tintSprite(img, tint.body, tint.accent, `enemy_${animKey}`) : img;
   drawFrame(ctx, source, anim.fw, anim.fh, frame, dx, dy, dw, dh, flip);
 }

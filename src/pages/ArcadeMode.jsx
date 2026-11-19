@@ -53,7 +53,7 @@ export default function ArcadeMode() {
     setPhase("run");
   };
   const finishStage = (payload) => {
-    setArcadeState({ health: payload.health, ammo: payload.ammo });
+    setArcadeState({ health: payload.health, ammo: payload.ammo, lives: payload.lives });
     if (stageIndex === ARCADE_LEVELS.length - 1) {
       setSave(writeSave({ arcadeEmblem: true }));
       setPhase("victory");
@@ -87,7 +87,7 @@ export default function ArcadeMode() {
         <p className="pa-pixel text-[12px] tracking-widest text-[#ff3d8b]">ARCADE MODE</p>
       </header>
       {phase === "setup" ? <section className="pa-panel pa-fade-up mx-auto mt-8 w-full max-w-3xl p-5 sm:p-8">
-        <p className="pa-pixel text-[8px] text-[#ffd166]">ONE RUN · TEN LEVELS · ONE LIFE</p>
+        <p className="pa-pixel text-[8px] text-[#ffd166]">ONE RUN · TEN LEVELS · THREE LIVES</p>
         <h1 className="pa-pixel mt-3 text-xl sm:text-2xl">THE ARCADE GAUNTLET</h1>
         <p className="mt-3 text-sm text-[#c6d2f2]/60">Choose one frame and two different weapons. The stages chain automatically. No collectibles, checkpoints, or breaks. Double jump unlocks after level 4.</p>
         <div className="mt-6 grid gap-5 sm:grid-cols-3">
