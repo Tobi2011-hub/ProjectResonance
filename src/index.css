@@ -627,8 +627,17 @@ canvas.pa-canvas {
   94% { transform: translate(1px, 0); }
 }
 
+@keyframes new-world-signal-flow {
+  from { stroke-dashoffset: 0; opacity: 0.4; }
+  to { stroke-dashoffset: -40; opacity: 0.9; }
+}
+
+.new-world-map__signal-path {
+  animation: new-world-signal-flow 3.2s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pa-bg-tile, .pa-backdrop-orbit, .pa-cameo, .pa-blink, .pa-marquee, .pa-fade-up, .pa-gameover-glitch, .pa-shard-pop, .pa-flawless-shard, .pa-flawless-rays, .pa-challenge-result::after, .pa-challenge-result-bar {
+  .pa-bg-tile, .pa-backdrop-orbit, .pa-cameo, .pa-blink, .pa-marquee, .pa-fade-up, .pa-gameover-glitch, .pa-shard-pop, .pa-flawless-shard, .pa-flawless-rays, .pa-challenge-result::after, .pa-challenge-result-bar, .new-world-map__signal-path {
     animation: none;
   }
 }
