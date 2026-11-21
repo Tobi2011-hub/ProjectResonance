@@ -3,13 +3,11 @@
  */
 import { useRef, useState } from "react";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Crosshair,
-  RefreshCw,
-  Swords,
+  ArrowUp,
+  Repeat2,
   X,
 } from "lucide-react";
 
@@ -45,6 +43,7 @@ function PadButton({ engine, action, label, icon: Icon, className = "", onFirstI
 function AnalogStick({ engine, onFirstInput }) {
   const stickRef = useRef(null);
   const activePointer = useRef(null);
+  const origin = useRef(null);
   const [axis, setAxis] = useState({ x: 0, y: 0 });
 
   const release = () => {
@@ -58,12 +57,16 @@ function AnalogStick({ engine, onFirstInput }) {
     const bounds = stickRef.current?.getBoundingClientRect();
     if (!bounds) return;
     const radius = bounds.width * 0.36;
-    const dx = event.clientX - (bounds.left + bounds.width / 2);
-    const dy = event.clientY - (bounds.top + bounds.height / 2);
+    const dx = event.clientX - origin.current.x;
+    const dy = event.clientY - origin.current.y;
     const length = Math.hypot(dx, dy);
     const scale = length > radius ? radius / length : 1;
-    const x = (dx * scale) / radius;
-    const y = (dy * scale) / radius;
+    // Ignore small thumb movement to avoid direction flicker; begin tracking
+    // after a 7px drag and keep a 12% analog dead zone around the origin.
+    const drag = Math.max(0, length - 7);
+    const adjusted = Math.max(0, drag / Math.max(1, radius - 7));
+    const x = adjusted < 0.12 ? 0 : (dx * scale / radius);
+    const y = adjusted < 0.12 ? 0 : (dy * scale / radius);
 
     setAxis({ x, y });
     const input = engine?.current?.input;
@@ -82,6 +85,8 @@ function AnalogStick({ engine, onFirstInput }) {
         event.preventDefault();
         if (activePointer.current !== null) return;
         activePointer.current = event.pointerId;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        origin.current = { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 };
         event.currentTarget.setPointerCapture(event.pointerId);
         onFirstInput?.();
         update(event);
@@ -93,7 +98,7 @@ function AnalogStick({ engine, onFirstInput }) {
         if (activePointer.current === event.pointerId) release();
       }}
       onPointerCancel={release}
-      className="pointer-events-auto relative h-[min(25vw,112px)] w-[min(25vw,112px)] min-h-[84px] min-w-[84px] touch-none rounded-full border border-white/35 bg-[#0a0d1c]/65 shadow-[0_0_24px_rgba(75,227,255,0.16)] backdrop-blur-sm"
+      className="pointer-events-auto relative h-[clamp(84px,22vw,112px)] w-[clamp(84px,22vw,112px)] touch-none rounded-full border border-white/35 bg-[#0a0d1c]/65 shadow-[0_0_24px_rgba(75,227,255,0.16)] backdrop-blur-sm"
     >
       <span className="pointer-events-none absolute inset-[20%] rounded-full border border-white/15" />
       <span
@@ -108,13 +113,13 @@ function Dpad({ engine, onFirstInput }) {
   return (
     <div className="pointer-events-auto grid grid-cols-3 grid-rows-3 gap-1">
       <span />
-      <PadButton engine={engine} action="up" label="UP" icon={ChevronUp} className="h-12 w-12 rounded-sm" onFirstInput={onFirstInput} />
+      <PadButton engine={engine} action="up" label="UP" icon={ArrowUp} className="h-14 w-14 rounded-sm" onFirstInput={onFirstInput} />
       <span />
-      <PadButton engine={engine} action="left" label="LEFT" icon={ChevronLeft} className="h-12 w-12 rounded-sm" onFirstInput={onFirstInput} />
-      <span className="h-12 w-12 rounded-full border border-white/15 bg-[#0a0d1c]/40" />
-      <PadButton engine={engine} action="right" label="RIGHT" icon={ChevronRight} className="h-12 w-12 rounded-sm" onFirstInput={onFirstInput} />
+      <PadButton engine={engine} action="left" label="LEFT" icon={ChevronLeft} className="h-14 w-14 rounded-sm" onFirstInput={onFirstInput} />
+      <span className="h-14 w-14 rounded-full border border-white/15 bg-[#0a0d1c]/40" />
+      <PadButton engine={engine} action="right" label="RIGHT" icon={ChevronRight} className="h-14 w-14 rounded-sm" onFirstInput={onFirstInput} />
       <span />
-      <PadButton engine={engine} action="down" label="DOWN" icon={ChevronDown} className="h-12 w-12 rounded-sm" onFirstInput={onFirstInput} />
+      <span />
       <span />
     </div>
   );
@@ -141,7 +146,7 @@ export default function TouchControls({
         <button
           type="button"
           onClick={() => onControlModeChange?.(controlMode === "joystick" ? "dpad" : "joystick")}
-          className="pointer-events-auto min-h-10 touch-manipulation border border-white/25 bg-[#0a0d1c]/80 px-3 text-left pa-pixel text-[7px] text-white/85"
+          className="pointer-events-auto min-h-12 touch-none border border-white/25 bg-[#0a0d1c]/80 px-3 text-left pa-pixel text-[7px] text-white/85"
           aria-label={`Switch to ${controlMode === "joystick" ? "D-pad" : "analog stick"} controls`}
         >
           {controlMode === "joystick" ? "USE D-PAD" : "USE STICK"}
@@ -161,11 +166,11 @@ export default function TouchControls({
         }}
       >
         <div className="flex flex-col gap-2">
-          <PadButton engine={engine} action="swap" label="SWAP" icon={RefreshCw} className="h-12 w-12 rounded-full" onFirstInput={onFirstInput} />
-          <PadButton engine={engine} action="dash" label="DASH" icon={X} className="h-14 w-14 rounded-full" onFirstInput={onFirstInput} />
+          <PadButton engine={engine} action="swap" label="SWAP" icon={Repeat2} className="h-14 w-14 rounded-full" onFirstInput={onFirstInput} />
+          <PadButton engine={engine} action="dash" label="DASH · X" icon={X} className="h-14 w-14 rounded-full" onFirstInput={onFirstInput} />
         </div>
-        <PadButton engine={engine} action="fire" label="FIRE" icon={Crosshair} className="h-16 w-16 rounded-full" onFirstInput={onFirstInput} />
-        <PadButton engine={engine} action="jump" label="JUMP" icon={Swords} className="h-[min(20vw,80px)] w-[min(20vw,80px)] min-h-16 min-w-16 rounded-full" onFirstInput={onFirstInput} />
+        <PadButton engine={engine} action="fire" label="FIRE · Z" icon={Crosshair} className="h-[clamp(56px,16vw,72px)] w-[clamp(56px,16vw,72px)] rounded-full" onFirstInput={onFirstInput} />
+        <PadButton engine={engine} action="jump" label="JUMP" icon={ArrowUp} className="h-[clamp(64px,18vw,80px)] w-[clamp(64px,18vw,80px)] rounded-full" onFirstInput={onFirstInput} />
       </div>
     </div>
   );

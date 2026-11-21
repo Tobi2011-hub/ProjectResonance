@@ -421,6 +421,24 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateViewport = () => {
+      const height = window.visualViewport?.height || window.innerHeight;
+      root.style.setProperty("--pa-vh", `${height}px`);
+    };
+    updateViewport();
+    window.addEventListener("resize", updateViewport, { passive: true });
+    window.addEventListener("orientationchange", updateViewport, { passive: true });
+    window.visualViewport?.addEventListener("resize", updateViewport, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateViewport);
+      window.removeEventListener("orientationchange", updateViewport);
+      window.visualViewport?.removeEventListener("resize", updateViewport);
+      root.style.removeProperty("--pa-vh");
+    };
+  }, []);
+
   const applySettings = useCallback(
     (patch) => {
       const merged = {
@@ -477,7 +495,7 @@ export function GameCanvas({ level, save, onComplete, onOutOfLives, onRestart, o
           style={{
             aspectRatio: `${VIEW_W} / ${VIEW_H}`,
             // let the stage itself take more of the screen while keeping the HUD compact
-            width: fullscreen ? "min(100vw, calc(100dvh * 1.7647))" : "min(100%, calc((100dvh - 1.5rem) * 1.7647))",
+            width: fullscreen ? "min(100vw, calc(var(--pa-vh, 100dvh) * 1.7647))" : "min(100%, calc((var(--pa-vh, 100dvh) - 1.5rem) * 1.7647))",
           }}
         >
           <canvas

@@ -28,10 +28,10 @@ export default function GameHud({ hud, onReload, timer = 0, score = 0, retryGems
   return (
     <div className="pointer-events-none absolute inset-0 z-10 select-none" style={{ opacity, transform: `scale(${scale})`, transformOrigin: "top center" }}>
       {/* ---------- TOP BAR ---------- */}
-      <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-[#05060d]/90 via-[#05060d]/45 to-transparent px-2 pb-4 pt-2 sm:px-4 sm:pt-3">
-        <div className="flex items-start gap-3">
+      <div className="pa-hud-top absolute inset-x-0 top-0 bg-gradient-to-b from-[#05060d]/90 via-[#05060d]/45 to-transparent px-[clamp(6px,2vw,16px)] pb-4 pt-[clamp(6px,1.5vh,12px)]">
+        <div className="flex items-start gap-[clamp(4px,1.2vw,12px)]">
           {/* HP + lives */}
-          <div className="min-w-0 flex-1 sm:max-w-[290px]">
+          <div className="pa-hud-health min-w-0 flex-1 sm:max-w-[290px]">
             <div className="relative border bg-[#060a16]/80 px-2 py-1.5" style={{ borderColor: `${accent}55`, boxShadow: `inset 0 0 16px ${accent}08` }}>
               <span className="absolute -left-px -top-px h-2 w-2 border-l border-t" style={{ borderColor: accent }} />
               <span className="absolute -bottom-px -right-px h-2 w-2 border-b border-r" style={{ borderColor: accent }} />
@@ -98,7 +98,7 @@ export default function GameHud({ hud, onReload, timer = 0, score = 0, retryGems
             </div>
 
             {hud.coinsTotal ? (
-              <div className="mt-1.5 inline-flex items-center gap-1.5 border border-[#ffd166]/30 bg-[#1a1405]/80 px-2 py-1">
+              <div className="pa-hud-secondary mt-1.5 inline-flex items-center gap-1.5 border border-[#ffd166]/30 bg-[#1a1405]/80 px-2 py-1">
                 <Coins className="h-3.5 w-3.5 text-[#ffd166]" />
                 <span className="pa-pixel text-[9px] text-[#ffd166]">
                   {hud.coins}/{hud.coinsTotal}
@@ -108,7 +108,7 @@ export default function GameHud({ hud, onReload, timer = 0, score = 0, retryGems
             ) : null}
           </div>
 
-          <div className="min-w-0 flex-1 text-center">
+          <div className="pa-hud-center min-w-0 flex-1 text-center">
             <div className="inline-flex items-center gap-2 border border-white/10 bg-[#060a16]/70 px-2.5 py-1">
               <PixelFontText
                 text={`S${String(hud.stage).padStart(2, "0")}`}
@@ -159,7 +159,7 @@ export default function GameHud({ hud, onReload, timer = 0, score = 0, retryGems
               </div>
             ) : null}
           </div>
-          <div className="flex flex-1 flex-col items-end sm:max-w-[120px]">
+          <div className="pa-hud-extra flex flex-1 flex-col items-end sm:max-w-[120px]">
             <div className="flex items-center gap-1.5">
               <Zap className={`h-3.5 w-3.5 ${hud.dashReady ? "text-[#4be3ff]" : "text-white/20"}`} />
               <span className={`pa-pixel text-[9px] ${hud.dashReady ? "text-[#4be3ff]" : "text-white/25"}`}>

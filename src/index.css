@@ -529,6 +529,37 @@ canvas.pa-canvas {
   display: none;
 }
 
+html:has(.pa-game-root), html:has(.pa-game-root) body, html:has(.pa-game-root) #root {
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pa-game-root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.pa-game-stage {
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+
+@media (max-width: 600px) {
+  .pa-hud-top { padding-bottom: clamp(6px, 1.5vh, 12px); }
+  .pa-hud-health { flex: 0 1 clamp(104px, 30vw, 180px); }
+  .pa-hud-center { flex: 1 1 auto; }
+  .pa-hud-center > div:first-child { display: none; }
+  .pa-hud-extra, .pa-hud-secondary { display: none !important; }
+  .pa-hud-health > div:first-child { padding: 4px 6px; }
+  .pa-hud-health > div:first-child > div:last-child > div:last-child { display: none; }
+  .pa-hud-health .pa-hud-metric { min-width: 0; }
+}
+
 @media (pointer: coarse), (hover: none) {
   .pa-touch-only {
     display: flex;
@@ -545,6 +576,7 @@ canvas.pa-canvas {
   .pa-game-root {
     height: 100dvh;
     min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   .pa-game-shell {
@@ -553,7 +585,7 @@ canvas.pa-canvas {
   }
 
   .pa-game-stage {
-    width: min(100vw, calc(100dvh * 1.7647)) !important;
+    width: min(100vw, calc((var(--pa-vh, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 1.7647)) !important;
   }
 
   .pa-touch-fullscreen {
