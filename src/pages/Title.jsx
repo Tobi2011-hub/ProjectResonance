@@ -70,7 +70,7 @@ export default function Title() {
       {
         id: "level-select",
         label: "Challenge Mode",
-        meta: levelSelectUnlocked ? "18 TRIALS" : "LOCKED",
+        meta: levelSelectUnlocked ? "6 TRIALS" : "LOCKED",
       },
       { id: "load", label: "Load Game", meta: `${slots.filter((slot) => slot.save).length}/${SAVE_SLOT_COUNT} SLOTS` },
       { id: "arcade", label: "Arcade Mode", meta: save?.arcadeEmblem ? "ARCADE EMBLEM" : "ONE LIFE" },
@@ -204,7 +204,7 @@ export default function Title() {
             <span className="grid h-8 w-8 place-items-center border border-[#4be3ff]/50 bg-[#4be3ff]/10">
               <span className="pa-pixel text-[10px] text-[#4be3ff]">PX</span>
             </span>
-            <span className="pa-pixel text-[8px] text-[#c6d2f2]/50">RESONANCE SHELL v1.0</span>
+            <span className="pa-pixel text-[8px] text-[#c6d2f2]/65">RESONANCE // SIGNAL CONSOLE</span>
           </div>
           <div className="flex items-center gap-2">
             <CircleDot className={`h-3 w-3 ${save ? "text-[#4be3ff]" : "text-[#c6d2f2]/25"}`} />

@@ -51,6 +51,8 @@ export default function Stage() {
 
   if (!save) return null;
 
+  if (challengeId && !challenge) return <Navigate to="/level-select-map" replace />;
+
   if (newWorldRun && !isNewWorldStage) return <Navigate to="/world" replace />;
   if (isNewWorldStage && (!newWorldRun || isLevelSelect || !hasPostgameUnlock(save) || !isStageUnlocked(save, level.id))) {
     return <Navigate to={hasPostgameUnlock(save) ? "/new-world" : "/world"} replace />;

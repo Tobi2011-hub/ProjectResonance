@@ -9,7 +9,7 @@ import { PixelBackdrop } from "@/components/game/GameUI";
 import PixelFontText from "@/components/game/PixelFontText";
 import ShopCard from "@/components/shop/ShopCard";
 import { loadSave, sfx } from "@/game/core";
-import { buildShop, buyItem } from "@/game/shop";
+import { buildShop, buyItem, ORBS_PER_STAGE, ORBS_PER_STAR } from "@/game/shop";
 
 export default function Shop() {
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ export default function Shop() {
         </main>
 
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
-          <PixelFontText text="40 ORBS PER STAGE · 5 PER SHARD" className="text-[7px] text-[#c6d2f2]/25" spacing={0.04} />
+          <PixelFontText text={`${ORBS_PER_STAGE} ORBS PER STAGE · ${ORBS_PER_STAR} PER STAR`} className="text-[7px] text-[#c6d2f2]/25" spacing={0.04} />
           <button
             type="button"
             onClick={() => navigate("/customize")}

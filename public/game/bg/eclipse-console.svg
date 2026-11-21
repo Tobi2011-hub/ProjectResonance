@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none">
+  <defs>
+    <radialGradient id="void" cx="0" cy="0" r="1" gradientTransform="matrix(1030 500 -640 1320 830 390)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#163445"/><stop offset=".48" stop-color="#0b1c2c"/><stop offset="1" stop-color="#060d18"/>
+    </radialGradient>
+    <radialGradient id="corona" cx="0" cy="0" r="1" gradientTransform="matrix(0 380 -480 0 1130 370)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9c7de2" stop-opacity=".34"/><stop offset=".55" stop-color="#55e3d1" stop-opacity=".12"/><stop offset="1" stop-color="#07121d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="450" x2="1390" y1="270" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#56efd9" stop-opacity="0"/><stop offset=".38" stop-color="#56efd9" stop-opacity=".48"/><stop offset=".7" stop-color="#bc9aff" stop-opacity=".48"/><stop offset="1" stop-color="#bc9aff" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" stroke="#8ddbd4" stroke-opacity=".055"/>
+      <circle cx="1" cy="1" r="1" fill="#56efd9" fill-opacity=".16"/>
+    </pattern>
+    <linearGradient id="floor" x1="800" x2="800" y1="640" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#56efd9" stop-opacity=".12"/><stop offset="1" stop-color="#56efd9" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#void)" d="M0 0h1600v1000H0z"/>
+  <path fill="url(#corona)" d="M0 0h1600v1000H0z"/>
+  <circle cx="1128" cy="356" r="204" fill="#07101b" fill-opacity=".82" stroke="#56efd9" stroke-opacity=".26" stroke-width="2"/>
+  <circle cx="1128" cy="356" r="178" stroke="#bc9aff" stroke-opacity=".16"/>
+  <ellipse cx="1128" cy="356" stroke="url(#ring)" stroke-width="3" rx="404" ry="112" transform="rotate(-17 1128 356)"/>
+  <ellipse cx="1128" cy="356" stroke="#56efd9" stroke-opacity=".15" rx="490" ry="172" transform="rotate(-17 1128 356)"/>
+  <path fill="url(#grid)" d="M0 0h1600v1000H0z"/>
+  <path fill="url(#floor)" d="M0 610h1600v390H0z"/>
+  <path d="M0 786h1600M0 844h1600M0 910h1600M180 650l-170 350m390-350L280 1000m390-350-85 350m390-350v350m390-350 85 350m305-350 170 350" stroke="#56efd9" stroke-opacity=".09"/>
+  <g fill="#c9fff5">
+    <circle cx="145" cy="162" r="1.5" opacity=".5"/><circle cx="337" cy="307" r="1" opacity=".7"/><circle cx="608" cy="117" r="1.5" opacity=".45"/><circle cx="779" cy="234" r="1" opacity=".55"/><circle cx="1398" cy="147" r="1.5" opacity=".62"/><circle cx="1500" cy="494" r="1" opacity=".55"/><circle cx="933" cy="582" r="1.3" opacity=".38"/><circle cx="204" cy="508" r="1" opacity=".42"/>
+  </g>
+</svg>

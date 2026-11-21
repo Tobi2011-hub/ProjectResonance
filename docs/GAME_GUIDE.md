@@ -1,4 +1,4 @@
-# CyberPulse Dash — code guide
+# PROJECT: RESONANCE — code guide
 
 Everything in this folder is plain JavaScript and CSS. Nothing is hidden and
 nothing is generated at runtime except the graphics you see on the canvas.
@@ -42,18 +42,17 @@ browser, so you can play it locally without any backend setup.
 
 ## 3. Where things are
 
-Only four files make up the game itself:
+These files hold the core game systems:
 
 ```
 src/game/
-  core.js        ★ ALL the tuning numbers + physics + input + sound + effects
-                 + the save file. Sections are numbered 1–6 in the file.
-  entities.js    weapons, the player, enemy variants, the Void Core boss
-                 (sections 1–4)
-  world.js       image assets, sprite drawing, the stage generator and all
-                 canvas rendering (sections 1–4)
-  engine.js      the frame loop that ties everything together: camera, shards,
-                 lives, checkpoints, boss trigger, win/lose
+  core.js        movement tuning, input, sound, effects, saves and rewards
+  entities.js    player movement, weapon behavior, enemies and bosses
+  weapons.js     weapon stats and dual-wield tuning
+  world.js       campaign stage generation, palettes and canvas rendering
+  challenges.js  six custom trial routes and their gameplay conditions
+  engine.js      frame loop, combat, pickups, checkpoints and stage flow
+  shop.js        orb prices, shop inventory and purchase handling
 ```
 
 The screens are four pages, each with the UI pieces it needs:
@@ -62,6 +61,8 @@ The screens are four pages, each with the UI pieces it needs:
 src/pages/
   Title.jsx      title screen, new game / load / settings / exit
   WorldMap.jsx   stage select, rifts, shard counter, and per-stage progress briefing
+  ChallengeMode.jsx  trial select, loadout and emblem progression
+  Shop.jsx       orb exchange and unlockables
   Customize.jsx  character, colours and weapon loadout with save confirmation
   Stage.jsx      stage-entry briefing and the gameplay canvas
 
@@ -109,6 +110,13 @@ rank 2 appears once unlocked. Permanent ranks remain in `save.abilities`, while
 the LEVELS section and raise that stage's `width` (in tiles). More width = more
 ground, more gaps and more room for the generator to place platforms and shards.
 
+**Tune challenge mode.** `challenges.js` defines six standalone routes. Each
+trial sets its own elevation and gap rhythm, hazard and enemy frequency,
+checkpoint placement, lives, and player restrictions. `engine.js` applies the
+listed health, damage, movement, ammunition and enemy-pressure multipliers.
+Challenge progress from the former 18-run ladder migrates into the six emblems
+when a save is loaded.
+
 **Make the boss harder.** In `entities.js`, section 4 (BOSS): raise
 `phaseOneMaxHp` or the Phase 2 multiplier in `startPhaseTwo()`, and shorten
 the timings in `beginAttack()` / `toIdle()`. In `world.js`, Level 10's generated
@@ -146,8 +154,12 @@ floor top/mid/deep, line and accent per theme.
 **Change the starting key bindings.** `DEFAULT_CONTROLS` in `core.js`,
 section 3 (INPUT). Players can still rebind everything in Settings.
 
-**Change a weapon.** `COOLDOWN` and the numbers inside `fireWeapon()` in
-`entities.js`, section 1 (WEAPONS).
+**Change a weapon.** The weapon definitions and dual-wield modifiers live in
+`weapons.js`; projectile behavior is in `fireWeapon()` in `entities.js`.
+
+**Tune the orb economy.** `ORBS_PER_STAGE`, `ORBS_PER_SECRET` and
+`ORBS_PER_STAR` in `core.js` control clear and collectible rewards. Shop item
+prices are in `shop.js`; character and palette prices are in `palettes.js`.
 
 **Change an enemy variant.** `ENEMY_VARIANTS` and the `Enemy` class in
 `entities.js` define enemy stats, colours and abilities. Exo Guards have a

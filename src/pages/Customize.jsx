@@ -328,7 +328,7 @@ export default function Customize() {
                   </div>
                   {dual ? (
                     <p className="pa-pixel mt-2 flex items-center gap-1.5 text-[7px] text-[#ffd166]">
-                      <Zap className="h-3 w-3" /> DUAL WIELD: DOUBLE FIRE RATE · +30% DAMAGE · HALF AMMO · 720 HP
+                      <Zap className="h-3 w-3" /> DUAL WIELD: 1.5× FIRE RATE · +20% DAMAGE · 65% AMMO · 900 HP
                     </p>
                   ) : (
                     <p className="mt-2 text-[12px] tracking-wide text-[#c6d2f2]/50">

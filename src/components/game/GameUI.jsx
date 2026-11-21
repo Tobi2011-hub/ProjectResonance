@@ -37,7 +37,7 @@ export function PixelBackdrop({ variant = "blue", theme = "" }) {
       <div className="absolute inset-0 pa-vignette" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#05060d] to-transparent" />
       <div className="absolute inset-0 pa-scanlines" />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#4be3ff]/50 to-transparent" />
+      <div className="pa-console-signal-line absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#4be3ff]/50 to-transparent" />
     </div>
   );
 }

@@ -4,11 +4,9 @@
  * All purchases are written straight into the save file.
  */
 import { ARMOR_PALETTES, LOCKED_CHARACTERS, LOCKED_PALETTES } from "./palettes";
-import { CHARACTERS, SECRET_WEAPONS, WEAPONS, isCharacterOwned, isWeaponOwned, loadSave, writeSave } from "./core";
+import { CHARACTERS, ORBS_PER_SECRET, ORBS_PER_STAGE, ORBS_PER_STAR, SECRET_WEAPONS, WEAPONS, isCharacterOwned, isWeaponOwned, loadSave, writeSave } from "./core";
 
-export const ORBS_PER_STAGE = 40;
-export const ORBS_PER_SECRET = 80;
-export const ORBS_PER_STAR = 5;
+export { ORBS_PER_SECRET, ORBS_PER_STAGE, ORBS_PER_STAR };
 
 /** Everything for sale, with an `owned` flag computed from the save. */
 export function buildShop(save) {
@@ -44,7 +42,7 @@ export function buildShop(save) {
 
   const weapons = ["rail", "seeker", "lance"].map((id, index) => ({
     id: `weapon-${id}`, kind: "weapon", value: id, name: WEAPONS[id].name,
-    description: WEAPONS[id].description, price: [220, 280, 340][index],
+    description: WEAPONS[id].description, price: [180, 230, 280][index],
     swatch: [WEAPONS[id].color, "#ffffff"], owned: isWeaponOwned(save, id),
   }));
 

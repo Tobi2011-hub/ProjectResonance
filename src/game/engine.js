@@ -63,10 +63,6 @@ const NO_HOOKS = {
   onOutOfLives: () => {},
 };
 
-// Challenge stages are long gauntlets, so keep their enemies lighter than the
-// story equivalents. This is applied only when a challenge config is present.
-const CHALLENGE_ENEMY_NERF = { speed: 0.65, health: 0.55, damage: 0.5 };
-
 export default class GameEngine {
   constructor({ canvas, level, assets, save, hooks, challenge = null, arcade = false, arcadeState = null }) {
     this.canvas = canvas;
@@ -74,15 +70,9 @@ export default class GameEngine {
     this.level = level;
     this.assets = assets;
     this.save = save;
-    // A modest trial-only combat boost helps players sustain the much longer
-    // gauntlets, while keeping each trial's unique restrictions intact.
-    this.challenge = challenge ? {
-      ...challenge,
-      damage: (challenge.damage ?? 1) * 1.6,
-      health: (challenge.health ?? 1) * 1.5,
-      speed: (challenge.speed ?? 1) * 1.12,
-      incoming: (challenge.incoming ?? 1) * 0.8,
-    } : null;
+    // Trial multipliers are applied as written so the briefing describes the
+    // actual rules: player stats are reduced and enemy pressure rises by tier.
+    this.challenge = challenge ? { ...challenge } : null;
     this.arcade = arcade;
     this.arcadeState = arcadeState;
     this.settings = save.settings || {};
@@ -100,8 +90,8 @@ export default class GameEngine {
     );
 
     // ---- loadout --------------------------------------------------------
-    // Same weapon in both slots = dual wield: double fire rate, +30% damage,
-    // half the ammo, and the pilot runs on 720 HP instead of 1200.
+    // Same weapon in both slots = a measured dual-wield boost with less ammo
+    // and lower maximum health, keeping mixed loadouts useful.
     const chooseOwnedWeapon = (candidate, fallback) => WEAPONS[candidate] && isWeaponOwned(save, candidate) ? candidate : fallback;
     const primary = chooseOwnedWeapon(this.challenge?.weapons?.[0] || save.primary, "buster");
     const secondary = chooseOwnedWeapon(this.challenge?.weapons?.[1] || save.secondary, "blade");
@@ -175,11 +165,11 @@ export default class GameEngine {
 
     this.lives = arcade
       ? Math.max(1, Math.min(3, Number(arcadeState?.lives) || 3))
-      : this.challenge ? 1 : START_LIVES;
+      : this.challenge ? Math.max(1, Math.min(3, Number(this.challenge.lives) || 2)) : START_LIVES;
     this.deaths = 0;
     this.hitstop = 0;
 
-    this.checkpointIndex = !arcade && save.checkpoint?.stage === level.id ? save.checkpoint.index || 0 : 0;
+    this.checkpointIndex = !arcade && !this.challenge && save.checkpoint?.stage === level.id ? save.checkpoint.index || 0 : 0;
     this.checkpoints = level.checkpoints.map(([x, y], i) => ({
       x: x * TILE,
       y: y * TILE,
@@ -227,12 +217,13 @@ export default class GameEngine {
       (enemy) => new Enemy(enemy.x, enemy.y, enemy.minX, enemy.maxX, enemy.variant)
     );
     if (this.challenge) this.enemies.forEach((enemy) => {
-      enemy.speed *= CHALLENGE_ENEMY_NERF.speed;
-      enemy.hp = Math.max(1, Math.ceil(enemy.hp * CHALLENGE_ENEMY_NERF.health));
+      const pressure = Math.max(0.75, Number(this.challenge.enemy) || 1);
+      enemy.speed *= 1 + (pressure - 1) * 0.45;
+      enemy.hp = Math.max(1, Math.ceil(enemy.hp * pressure));
       enemy.maxHp = enemy.hp;
-      enemy.shieldHp = Math.ceil(enemy.shieldHp * CHALLENGE_ENEMY_NERF.health);
+      enemy.shieldHp = Math.ceil((Number(enemy.shieldHp) || 0) * pressure);
       enemy.maxShieldHp = enemy.shieldHp;
-      enemy.challengeDamageMultiplier = CHALLENGE_ENEMY_NERF.damage;
+      enemy.challengeDamageMultiplier = pressure;
     });
     this.boss = level.boss ? this.createBoss() : null;
     this.bossWorld = level.boss?.collisionPlatforms

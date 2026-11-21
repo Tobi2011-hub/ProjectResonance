@@ -1,0 +1,257 @@
+/* Eclipse Console visual layer. Kept separate from component logic so the
+   direction can evolve without touching gameplay or screen behavior. */
+.pa-root {
+  --pa-bg: #07111d;
+  --pa-deep: #0b1b29;
+  --pa-panel: #102535;
+  --pa-line: #254151;
+  --pa-cyan: #56efd9;
+  --pa-magenta: #bc9aff;
+  --pa-gold: #ffd98a;
+  --pa-ink: #e4f3f4;
+  --pa-muted: #9db6be;
+  --pa-hazard: #ff796f;
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--pa-ink);
+  background:
+    radial-gradient(ellipse at 78% 18%, rgba(188, 154, 255, .13), transparent 35%),
+    radial-gradient(ellipse at 22% 82%, rgba(86, 239, 217, .08), transparent 40%),
+    linear-gradient(145deg, #0b1a28, #07111d 54%, #050a12);
+  font-family: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  isolation: isolate;
+}
+
+.pa-root .pa-bg-tile {
+  background-image: url("/game/bg/eclipse-console.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  image-rendering: auto;
+  animation: eclipse-backdrop-drift 42s ease-in-out infinite alternate;
+}
+
+.pa-root .pa-bg-tile::after {
+  content: "";
+  position: absolute;
+  inset: -20% -50%;
+  pointer-events: none;
+  background: linear-gradient(108deg, transparent 38%, rgba(86, 239, 217, .045) 48%, rgba(188, 154, 255, .075) 50%, transparent 60%);
+  transform: translateX(-35%);
+  animation: eclipse-signal-sweep 18s ease-in-out infinite;
+}
+
+.pa-root .pa-bg-tile.pa-bg-choice-blue {
+  background-image: url("/game/bg/eclipse-console.svg"), radial-gradient(ellipse at 72% 28%, rgba(62, 159, 239, .32), transparent 42%), linear-gradient(135deg, #06132c, #102950 48%, #071020);
+}
+.pa-root .pa-bg-tile.pa-bg-choice-purple {
+  background-image: url("/game/bg/eclipse-console.svg"), radial-gradient(ellipse at 68% 24%, rgba(188, 154, 255, .3), transparent 42%), linear-gradient(135deg, #160b31, #261747 48%, #0a0b1d);
+}
+.pa-root .pa-bg-tile.pa-bg-choice-teal {
+  background-image: url("/game/bg/eclipse-console.svg"), radial-gradient(ellipse at 70% 28%, rgba(20, 184, 166, .3), transparent 42%), linear-gradient(135deg, #041d24, #0b3d45 52%, #071117);
+}
+.pa-root .pa-bg-tile.pa-bg-choice-ember {
+  background-image: url("/game/bg/eclipse-console.svg"), radial-gradient(ellipse at 74% 30%, rgba(249, 115, 22, .27), transparent 42%), linear-gradient(135deg, #25100d, #4b1c20 48%, #100a14);
+}
+
+.pa-root .pa-pixel {
+  font-family: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: .12em;
+  line-height: 1.2;
+}
+
+.pa-root .pa-title {
+  color: #f1fbfa;
+  font-family: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: .035em;
+  line-height: .96;
+  text-shadow: 0 0 28px rgba(86, 239, 217, .2), 0 2px 0 rgba(5, 10, 18, .8);
+}
+
+.pa-root .pa-panel {
+  border: 1px solid rgba(140, 200, 203, .2);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(17, 39, 53, .88), rgba(7, 20, 31, .94)),
+    radial-gradient(ellipse at 100% 0%, rgba(188, 154, 255, .09), transparent 60%);
+  box-shadow: 0 20px 64px rgba(0, 0, 0, .36), inset 0 1px rgba(255, 255, 255, .07);
+  backdrop-filter: blur(18px) saturate(125%);
+  transition: border-color 260ms ease, box-shadow 260ms ease, transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease;
+  animation: eclipse-panel-arrive 520ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.pa-root .pa-panel:hover:not(.pa-game-stage) {
+  border-color: rgba(86, 239, 217, .4);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .42), 0 0 32px rgba(86, 239, 217, .07), inset 0 1px rgba(255, 255, 255, .08);
+  transform: translateY(-2px);
+}
+
+.pa-root button,
+.pa-root select,
+.pa-root input,
+.pa-root [role="button"] {
+  border-radius: 8px;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.pa-root button.rounded-full,
+.pa-root [role="button"].rounded-full { border-radius: 9999px; }
+.pa-root button.rounded-sm,
+.pa-root [role="button"].rounded-sm { border-radius: 2px; }
+.pa-root button.rounded-md,
+.pa-root [role="button"].rounded-md { border-radius: 6px; }
+
+.pa-root button:active,
+.pa-root [role="button"]:active {
+  transform: translateY(1px) scale(.985);
+}
+
+.pa-root button:focus-visible,
+.pa-root select:focus-visible,
+.pa-root a:focus-visible {
+  outline: 2px solid var(--pa-cyan);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(86, 239, 217, .16);
+}
+
+.pa-root [role="menu"] > button {
+  min-height: 48px;
+  border-radius: 9px;
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+.pa-root [role="menu"] > button:hover:not(:disabled) { transform: translateX(3px); }
+
+.pa-root .pa-focus-row {
+  background: linear-gradient(100deg, rgba(86, 239, 217, .16), rgba(188, 154, 255, .09) 62%, transparent);
+  box-shadow: inset 3px 0 var(--pa-cyan), inset 0 0 0 1px rgba(86, 239, 217, .22);
+}
+
+.pa-root .pa-cameo {
+  filter: drop-shadow(0 0 10px rgba(86, 239, 217, .25));
+}
+
+.pa-root .pa-range-slider {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--pa-cyan), #456e7b 50%, #192e3a 50%);
+}
+.pa-root .pa-range-slider::-webkit-slider-thumb,
+.pa-root .pa-range-slider::-moz-range-thumb {
+  border: 2px solid #07111d;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(86, 239, 217, .55);
+}
+
+.pa-root .pa-settings-scroll {
+  scrollbar-color: var(--pa-cyan) #0b1b29;
+}
+.pa-root .pa-settings-scroll::-webkit-scrollbar-track { background: #0b1b29; }
+.pa-root .pa-settings-scroll::-webkit-scrollbar-thumb { border-color: #0b1b29; border-radius: 99px; }
+
+.pa-game-root {
+  --pa-game-pad: max(10px, env(safe-area-inset-left));
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(86, 239, 217, .08), transparent 54%),
+    #050d16;
+}
+
+.pa-root .pa-game-stage {
+  border-color: rgba(86, 239, 217, .24);
+  border-radius: 12px;
+  box-shadow: 0 22px 80px rgba(0, 0, 0, .52), 0 0 36px rgba(86, 239, 217, .075), inset 0 1px rgba(255, 255, 255, .08);
+}
+
+.pa-root .pa-hud-metric {
+  border-radius: 8px;
+  background-image: linear-gradient(140deg, rgba(16, 37, 53, .88), rgba(5, 15, 24, .9));
+  backdrop-filter: blur(12px);
+}
+
+.pa-root .pa-gameover-glitch {
+  color: #ffe3df;
+  text-shadow: 2px 0 var(--pa-hazard), -2px 0 var(--pa-cyan), 0 0 25px rgba(255, 121, 111, .34);
+}
+
+.pa-root .pa-touch-only button,
+.pa-root .pa-touch-only [role="application"] {
+  border-color: rgba(169, 219, 218, .42);
+  background-color: rgba(7, 19, 29, .82);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .3), inset 0 1px rgba(255, 255, 255, .1);
+  backdrop-filter: blur(14px);
+}
+.pa-root .pa-touch-only button:active {
+  border-color: var(--pa-cyan);
+  background-color: rgba(86, 239, 217, .24);
+  box-shadow: 0 0 24px rgba(86, 239, 217, .22);
+}
+
+.pa-root .pa-backdrop-horizon {
+  background-image: linear-gradient(to top, rgba(86, 239, 217, .09), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 63px, rgba(86, 239, 217, .045) 64px 65px),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgba(86, 239, 217, .045) 40px 41px);
+}
+.pa-root .pa-backdrop-orbit {
+  border-color: rgba(188, 154, 255, .16);
+  box-shadow: inset 0 0 70px rgba(86, 239, 217, .045), 0 0 80px rgba(188, 154, 255, .035);
+  animation: pa-orbit 44s linear infinite, eclipse-orbit-breathe 8s ease-in-out infinite;
+}
+
+.pa-root .pa-console-signal-line {
+  background-size: 220% 100%;
+  animation: eclipse-console-signal 7s linear infinite;
+}
+
+@keyframes eclipse-backdrop-drift {
+  from { transform: scale(1.015) translate3d(-.35%, .15%, 0); }
+  to { transform: scale(1.055) translate3d(.45%, -.2%, 0); }
+}
+@keyframes eclipse-signal-sweep {
+  0%, 15% { transform: translateX(-38%); opacity: 0; }
+  35% { opacity: 1; }
+  72%, 100% { transform: translateX(38%); opacity: 0; }
+}
+@keyframes eclipse-panel-arrive {
+  from { opacity: .72; filter: blur(3px); }
+  to { opacity: 1; filter: blur(0); }
+}
+@keyframes eclipse-orbit-breathe {
+  0%, 100% { opacity: .72; }
+  50% { opacity: 1; }
+}
+@keyframes eclipse-console-signal {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+
+/* Raise the former micro-label sizes now that the interface uses a clean
+   sans display face instead of the dense pixel type treatment. */
+.pa-root [class*="text-[6px]"],
+.pa-root [class*="text-[7px]"],
+.pa-root [class*="text-[8px]"],
+.pa-root [class*="text-[9px]"] { font-size: 10px !important; }
+
+@media (max-width: 639px) {
+  .pa-root:not(.pa-game-root) {
+    min-height: 100svh;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .pa-root .pa-panel { border-radius: 12px; }
+  .pa-root [role="menu"] > button { min-height: 50px; }
+  .pa-game-root { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .pa-root [class*="text-[10px]"] { font-size: 11px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-root .pa-bg-tile,
+  .pa-root .pa-bg-tile::after,
+  .pa-root .pa-backdrop-orbit,
+  .pa-root .pa-panel,
+  .pa-root .pa-console-signal-line { animation: none !important; }
+  .pa-root .pa-panel:hover:not(.pa-game-stage),
+  .pa-root [role="menu"] > button:hover:not(:disabled) { transform: none; }
+  .pa-root button,
+  .pa-root select,
+  .pa-root input,
+  .pa-root [role="button"] { transition-duration: .01ms; }
+}

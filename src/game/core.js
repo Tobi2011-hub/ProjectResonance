@@ -52,8 +52,8 @@ export const GRAVITY = GRAVITY_RISE;
 /** Maximum falling speed (caps how fast you can drop). */
 export const MAX_FALL = 740;
 
-/** Top running speed. 220 ≈ 4.6 tiles per second. */
-export const RUN_SPEED = 220;
+/** Top running speed. 232 ≈ 4.8 tiles per second. */
+export const RUN_SPEED = 232;
 
 /** How quickly you reach top speed on the ground. Higher = less slippery. */
 export const ACCEL = 3600;
@@ -77,10 +77,10 @@ export const JUMP_V = -575;
 export const JUMP_CUT = 1.9;
 
 /** "Coyote time": how long after walking off a ledge you can still jump. */
-export const COYOTE = 0.1;
+export const COYOTE = 0.12;
 
 /** "Jump buffer": pressing jump slightly BEFORE landing still jumps. */
-export const JUMP_BUFFER = 0.16;
+export const JUMP_BUFFER = 0.18;
 
 /** Burst speed during a dash. Higher = longer dash distance. */
 export const DASH_SPEED = 430;
@@ -756,6 +756,9 @@ export const SAVE_KEY = "pixel-adventure-save-v2";
 export const SAVE_SLOT_COUNT = 5;
 export const ACTIVE_SAVE_SLOT_KEY = "pixel-adventure-active-save-slot-v1";
 export const MAIN_STAGES = 10;
+export const ORBS_PER_STAGE = 50;
+export const ORBS_PER_SECRET = 75;
+export const ORBS_PER_STAR = 7;
 export const SECRET_STAGES = [11, 12, 13, 14, 15, 16, 17, 18];
 export const STAR_SECRETS = { 16: 2, 17: 4, 18: 6 };
 export const NEW_WORLD_STAGES = [19, 20, 21, 22, 23, 24, 25];
@@ -841,6 +844,7 @@ export const createDefaultSave = () => ({
   unlockedPalettes: [],
   unlockedWeapons: [],
   challengeEmblems: [],
+  challengeVersion: 2,
   arcadeEmblem: false,
   checkpoint: null,
   settings: {
@@ -952,7 +956,14 @@ function normalize(parsed) {
   save.unlockedWeapons = Array.isArray(parsed.unlockedWeapons)
     ? [...new Set(parsed.unlockedWeapons.map(migrateWeaponId))]
     : [];
-  save.challengeEmblems = Array.isArray(parsed.challengeEmblems) ? [...new Set(parsed.challengeEmblems.filter((id) => Number.isInteger(id) && id >= 1 && id <= 18))] : [];
+  // The old ladder had 18 short modifier runs. Preserve earned progress when
+  // it migrates into the new six route trials (three legacy clears per tier).
+  save.challengeEmblems = Array.isArray(parsed.challengeEmblems)
+    ? [...new Set(parsed.challengeEmblems
+        .filter((id) => Number.isInteger(id) && id >= 1 && id <= (parsed.challengeVersion === 2 ? 6 : 18))
+        .map((id) => parsed.challengeVersion === 2 ? id : Math.ceil(id / 3)))]
+    : [];
+  save.challengeVersion = 2;
   save.collectedCoins = Object.fromEntries(
     COIN_CHALLENGE_STAGES.map((stage) => [
       stage,
@@ -1057,6 +1068,7 @@ export function isLevelSelectUnlocked(save) {
 }
 
 export function completeChallenge(id) {
+  if (!Number.isInteger(id) || id < 1 || id > 6) return loadSave();
   const save = loadSave() || createDefaultSave();
   const challengeEmblems = [...new Set([...(save.challengeEmblems || []), id])];
   return writeSave({ challengeEmblems });
@@ -1152,8 +1164,8 @@ export function completeStage(stage, { collected = 0, noDeath = false, coins = 0
   }
 
   const orbGain =
-    (stage > MAIN_STAGES && stage <= 18 ? 80 : 40) +
-    collected * 5 +
+    (stage > MAIN_STAGES && stage <= 18 ? ORBS_PER_SECRET : ORBS_PER_STAGE) +
+    collected * ORBS_PER_STAR +
     Math.max(0, coins) * 2 +
     (coinsTotal > 0 && coins >= coinsTotal ? 20 : 0) +
     (unlockedWeapon ? 60 : 0) +

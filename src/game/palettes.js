@@ -22,4 +22,4 @@ export const LOCKED_PALETTES = {
 };
 
 /** The fourth and fifth frames are shop items. */
-export const LOCKED_CHARACTERS = { 3: 450, 4: 650 };
+export const LOCKED_CHARACTERS = { 3: 320, 4: 480 };

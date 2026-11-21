@@ -109,7 +109,7 @@ export const WEAPONS = {
   stormfork: { id: "stormfork", name: "Stormfork", range: "Long-Range", category: "long", cooldown: 0.48, damage: 20, maxAmmo: 54, color: "#c4a2ff", sprite: [4, 1], description: "A fast forked bolt built for sustained fire." },
   duskblade: { id: "duskblade", name: "Duskblade", range: "Short-Range", category: "melee", cooldown: 0.58, damage: 52, reach: 92, color: "#cb83ff", sprite: [6, 2], description: "A long violet arc with generous reach." },
   sunlance: { id: "sunlance", name: "Sunlance", range: "Long-Range", category: "long", cooldown: 1.15, damage: 72, maxAmmo: 20, color: "#ff7e57", sprite: [7, 3], description: "A charged lance that pierces reinforced targets." },
-  astralcore: { id: "astralcore", name: "Astral Core", range: "Mid-Range", category: "mid", cooldown: 0.28, damage: 84, maxAmmo: 80, color: "#fff28a", sprite: [8, 4], passiveDamage: 1.75, description: "An unstable star core. While equipped, it greatly increases your damage." },
+  astralcore: { id: "astralcore", name: "Astral Core", range: "Mid-Range", category: "mid", cooldown: 0.42, damage: 40, maxAmmo: 64, color: "#fff28a", sprite: [8, 4], passiveDamage: 1.15, description: "A steady star bolt with a small damage boost while equipped." },
 };
 
 /** Kept for the files that already import WEAPON_TYPES from core. */
@@ -130,6 +130,6 @@ export const isAmmoWeapon = (id) => Boolean(WEAPONS[id]?.maxAmmo);
 
 /**
  * Same weapon in both slots = DUAL WIELD:
- * double fire rate, +30% damage, half ammo, and the pilot drops to 720 HP.
+ * faster fire, a modest damage bonus, a smaller magazine, and reduced health.
  */
-export const DUAL = { fireRate: 2, damage: 1.3, ammo: 0.5, health: 720 };
+export const DUAL = { fireRate: 1.5, damage: 1.2, ammo: 0.65, health: 900 };

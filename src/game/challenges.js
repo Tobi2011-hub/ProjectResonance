@@ -1,88 +1,144 @@
 import { ROWS } from "./core";
 
+// Six purpose built routes. Heights and gaps are tile counts; each row below
+// describes a distinct rhythm instead of asking the campaign generator to
+// repeat a world-map stage with a different stat sheet.
 export const CHALLENGES = [
-  { id: 1, title: "Signal Run", subtitle: "A precision route under reduced power.", damage: 0.64, incoming: 1.05, health: 0.9, speed: 0.94, enemy: 1.12, code: "NOVA-01", accent: "#4be3ff", heights: [15, 14, 15, 13, 14, 12, 14, 15, 13, 12, 14], gaps: [2, 2, 2, 3, 2, 2, 3, 2, 2, 2, 0] },
-  { id: 2, title: "Crossfire", subtitle: "No dash. Thread through the guard posts.", damage: 0.58, incoming: 1.2, health: 0.82, speed: 0.92, enemy: 1.28, disableDash: true, code: "ECHO-22", accent: "#7af6c8", heights: [15, 13, 14, 12, 15, 13, 11, 14, 12, 15, 13, 11], gaps: [3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 2, 0] },
-  { id: 3, title: "Thin Ice", subtitle: "Half ammo and no field reloads.", damage: 0.52, incoming: 1.35, health: 0.74, speed: 0.9, enemy: 1.48, ammo: 0.5, disableReload: true, code: "VOLT-33", accent: "#ffd166", heights: [15, 14, 12, 15, 13, 11, 14, 12, 15, 13, 11, 13, 12], gaps: [3, 3, 2, 3, 3, 2, 3, 3, 2, 3, 2, 2, 0] },
-  { id: 4, title: "No Safe Ground", subtitle: "Slow movement, no weapon swapping.", damage: 0.46, incoming: 1.5, health: 0.68, speed: 0.72, enemy: 1.68, disableSwap: true, code: "RIFT-44", accent: "#a78bfa", heights: [15, 12, 14, 11, 14, 12, 15, 12, 10, 13, 11, 14, 12], gaps: [3, 3, 3, 2, 3, 3, 2, 3, 3, 2, 3, 2, 0] },
-  { id: 5, title: "Overload", subtitle: "Low health and sealed abilities.", damage: 0.4, incoming: 1.7, health: 0.54, speed: 0.88, enemy: 1.92, noAbilities: true, code: "FLUX-55", accent: "#ff8a3d", heights: [15, 13, 11, 14, 12, 10, 13, 11, 14, 12, 10, 13, 11, 13], gaps: [3, 3, 3, 3, 2, 3, 3, 2, 3, 3, 2, 3, 2, 0] },
-  { id: 6, title: "Last Resonance", subtitle: "No dash, no abilities, one fragile frame.", damage: 0.32, incoming: 2, health: 0.42, speed: 0.82, enemy: 2.2, disableDash: true, noAbilities: true, ammo: 0.6, code: "ZENITH-66", accent: "#ff3d8b", heights: [15, 12, 10, 13, 11, 14, 10, 12, 15, 11, 9, 12, 10, 14, 11], gaps: [3, 3, 3, 3, 3, 2, 3, 3, 3, 2, 3, 3, 2, 2, 0] },
-  { id: 7, title: "Dead Channel", subtitle: "A long-range run with scarce ammo and no reloads.", damage: 0.3, incoming: 2.05, health: 0.42, speed: 0.86, enemy: 2.35, ammo: 0.4, disableReload: true, code: "DARK-77", accent: "#ff8a3d" },
-  { id: 8, title: "Glass Horizon", subtitle: "Fragile frame. Every landing is under fire.", damage: 0.28, incoming: 2.2, health: 0.34, speed: 0.88, enemy: 2.5, disableDash: true, code: "GLASS-88", accent: "#a78bfa" },
-  { id: 9, title: "Lockstep", subtitle: "No weapon swapping; plan every encounter ahead.", damage: 0.26, incoming: 2.3, health: 0.32, speed: 0.78, enemy: 2.65, disableSwap: true, code: "STEP-99", accent: "#4be3ff" },
-  { id: 10, title: "Null Circuit", subtitle: "Abilities sealed, dash disabled, enemies reinforced.", damage: 0.24, incoming: 2.45, health: 0.3, speed: 0.82, enemy: 2.8, noAbilities: true, disableDash: true, code: "NULL-10", accent: "#7af6c8" },
-  { id: 11, title: "Redline", subtitle: "Survive a fast route with a sliver of health.", damage: 0.22, incoming: 2.6, health: 0.25, speed: 0.92, enemy: 3, ammo: 0.45, code: "RED-11", accent: "#ff3d8b" },
-  { id: 12, title: "Silent Arsenal", subtitle: "No abilities or reloads. Ammunition is your timer.", damage: 0.2, incoming: 2.8, health: 0.26, speed: 0.8, enemy: 3.15, ammo: 0.35, noAbilities: true, disableReload: true, code: "HUSH-12", accent: "#ffd166" },
-  { id: 13, title: "Broken Compass", subtitle: "Heavy fire and unstable footing, with no dash.", damage: 0.18, incoming: 3, health: 0.24, speed: 0.76, enemy: 3.35, disableDash: true, code: "LOST-13", accent: "#a78bfa" },
-  { id: 14, title: "Twin Suns", subtitle: "A long dual-route gauntlet against elite guards.", damage: 0.17, incoming: 3.15, health: 0.23, speed: 0.82, enemy: 3.5, disableSwap: true, code: "DUAL-14", accent: "#ff8a3d" },
-  { id: 15, title: "No Return", subtitle: "No abilities, no reloads, no room for a mistake.", damage: 0.16, incoming: 3.35, health: 0.21, speed: 0.8, enemy: 3.7, ammo: 0.3, noAbilities: true, disableReload: true, code: "VOID-15", accent: "#4be3ff" },
-  { id: 16, title: "Red Shift", subtitle: "Move carefully through a relentless stream of fire.", damage: 0.15, incoming: 3.55, health: 0.2, speed: 0.74, enemy: 3.9, disableDash: true, disableSwap: true, code: "SHIFT-16", accent: "#ff3d8b" },
-  { id: 17, title: "Zero Signal", subtitle: "A marathon with sealed abilities and critical ammo.", damage: 0.14, incoming: 3.8, health: 0.18, speed: 0.78, enemy: 4.15, ammo: 0.25, noAbilities: true, disableReload: true, code: "ZERO-17", accent: "#7af6c8" },
-  { id: 18, title: "The Long Dark", subtitle: "The final trial: one frame, one life, endless pressure.", damage: 0.12, incoming: 4, health: 0.16, speed: 0.72, enemy: 4.4, ammo: 0.25, noAbilities: true, disableDash: true, disableSwap: true, disableReload: true, code: "DARK-18", accent: "#ffd166" },
+  {
+    id: 1, title: "Signal Run", subtitle: "Learn the route. Keep your momentum through measured gaps.",
+    damage: 0.9, incoming: 1.05, health: 0.9, speed: 0.96, enemy: 1,
+    segments: 30, enemyEvery: 5, hazardEvery: 6, upperEvery: 5,
+    heights: [15, 14, 13, 14, 12, 13, 15, 14, 12, 13], gaps: [2, 2, 3, 2, 2, 3, 2, 2, 3, 0],
+    code: "NOVA-01", accent: "#4be3ff", theme: "blue", lives: 3,
+  },
+  {
+    id: 2, title: "Crossfire", subtitle: "Dash is sealed. Read each landing before you commit.",
+    damage: 0.84, incoming: 1.15, health: 0.82, speed: 0.92, enemy: 1.08, disableDash: true,
+    segments: 34, enemyEvery: 4, hazardEvery: 5, upperEvery: 4,
+    heights: [15, 13, 12, 14, 11, 13, 15, 12, 10, 13, 14], gaps: [2, 3, 2, 3, 2, 2, 3, 2, 3, 2, 0],
+    code: "ECHO-22", accent: "#7af6c8", theme: "green", lives: 3,
+  },
+  {
+    id: 3, title: "Thin Ice", subtitle: "Limited ammunition. Save shots for threats that block your route.",
+    damage: 0.8, incoming: 1.2, health: 0.78, speed: 0.9, enemy: 1.12, ammo: 0.65, disableReload: true,
+    segments: 36, enemyEvery: 4, hazardEvery: 4, upperEvery: 4,
+    heights: [15, 14, 11, 12, 14, 10, 13, 15, 12, 11, 14, 13], gaps: [3, 2, 3, 2, 3, 2, 2, 3, 2, 3, 0],
+    code: "VOLT-33", accent: "#ffd166", theme: "blue", lives: 3,
+  },
+  {
+    id: 4, title: "No Safe Ground", subtitle: "Weapon swap is locked. Wall-kick between the rising shelves.",
+    damage: 0.76, incoming: 1.25, health: 0.72, speed: 0.86, enemy: 1.16, disableSwap: true,
+    segments: 38, enemyEvery: 3, hazardEvery: 5, upperEvery: 3,
+    heights: [15, 12, 10, 13, 9, 12, 15, 11, 8, 12, 14, 10], gaps: [3, 3, 2, 3, 2, 3, 3, 2, 3, 2, 0],
+    code: "RIFT-44", accent: "#a78bfa", theme: "purple", lives: 2,
+  },
+  {
+    id: 5, title: "Overload", subtitle: "Your abilities are offline. Route choice and timing matter.",
+    damage: 0.72, incoming: 1.35, health: 0.66, speed: 0.84, enemy: 1.22, noAbilities: true,
+    segments: 40, enemyEvery: 3, hazardEvery: 4, upperEvery: 3,
+    heights: [15, 12, 9, 11, 14, 10, 8, 12, 15, 11, 9, 13, 10], gaps: [3, 2, 3, 3, 2, 3, 2, 3, 3, 2, 0],
+    code: "FLUX-55", accent: "#ff8a3d", theme: "yellow", lives: 2,
+  },
+  {
+    id: 6, title: "Last Resonance", subtitle: "One final push: no dash, no abilities, and a narrow margin for error.",
+    damage: 0.68, incoming: 1.5, health: 0.58, speed: 0.82, enemy: 1.28,
+    disableDash: true, noAbilities: true, ammo: 0.55,
+    segments: 44, enemyEvery: 3, hazardEvery: 3, upperEvery: 3,
+    heights: [15, 12, 9, 13, 10, 8, 12, 15, 11, 9, 13, 10, 8, 12], gaps: [3, 3, 2, 3, 2, 3, 3, 2, 3, 2, 3, 0],
+    code: "ZENITH-66", accent: "#ff3d8b", theme: "pink", lives: 2,
+  },
 ];
 
-const themes = ["green", "blue", "yellow", "purple", "brown", "pink"];
-const enemyTypes = ["standard", "shielded", "armored", "gunner", "flyer", "exo"];
+const ENEMY_TYPES = ["standard", "shielded", "armored", "gunner", "flyer", "exo"];
 
 export function getChallengeLevel(id) {
   const trial = CHALLENGES.find((item) => item.id === Number(id));
   if (!trial) return null;
+
   const platforms = [[0, 15, 8, ROWS - 15]];
   const enemies = [];
   const spikes = [];
   const trapSpikes = [];
   const saws = [];
   const movers = [];
-  const defaultHeights = [15, 13, 11, 14, 12, 10, 13, 11, 14, 12, 10, 13, 11, 14, 12];
-  const defaultGaps = [2, 3, 3, 2, 3, 3, 2, 3, 3, 2, 3, 3, 2, 3, 0];
-  const heights = trial.heights || defaultHeights;
-  const gaps = trial.gaps || defaultGaps;
+  const checkpoints = [];
+  const ammo = [];
+  const fruits = [];
   let x = 8;
-  // Each trial is a long-form gauntlet: the later trials add more rooms as
-  // well as stronger enemies and more restrictive player conditions.
-  const segmentCount = 48 + trial.id * 2;
-  for (let index = 0; index < segmentCount; index += 1) {
-    const patternIndex = index % heights.length;
-    const y = heights[patternIndex];
-    const length = 7 + ((trial.id + index) % 3);
+
+  for (let index = 0; index < trial.segments; index += 1) {
+    const patternIndex = index % trial.heights.length;
+    const y = trial.heights[patternIndex];
+    const length = 8 + ((trial.id + index) % 3);
     platforms.push([x, y, length, ROWS - y]);
-    // Keep long gauntlets readable: most rooms are traversal-focused, with
-    // deliberate enemy encounters every four platforms early on and every
-    // three platforms in the final trials, avoiding the old near-every-other-
-    // room density.
-    const encounterFrequency = trial.id >= 13 ? 3 : 4;
-    if (index > 0 && index % encounterFrequency === trial.id % encounterFrequency) {
-      const typePool = trial.id >= 13 ? enemyTypes : enemyTypes.slice(0, 4);
-      const type = typePool[(trial.id + index * 2) % typePool.length];
-      enemies.push({ x: x + Math.floor(length / 2), y, minX: x + 1, maxX: x + length - 1, variant: type });
+
+    // Checkpoints sit on quiet platforms and split the route into fair runs.
+    const checkpointEvery = 10;
+    const checkpoint = index > 0 && index % checkpointEvery === 0;
+    if (checkpoint) checkpoints.push([x + 2, y]);
+
+    if (!checkpoint && index > 1 && index % trial.enemyEvery === trial.id % trial.enemyEvery) {
+      const poolSize = trial.id < 4 ? 4 : ENEMY_TYPES.length;
+      const variant = ENEMY_TYPES[(trial.id + index * 2) % poolSize];
+      enemies.push({ x: x + Math.floor(length / 2), y, minX: x + 1, maxX: x + length - 1, variant });
     }
-    if (index > 1 && index % 2 === 0) {
-      const hazardX = x + 2;
-      if ((trial.id + index) % 3 === 0) trapSpikes.push({ x: hazardX, y: y - 1, w: 2, period: 1.3, onFrac: 0.54, phase: index * 0.37 });
-      else spikes.push([hazardX, y - 1, 2]);
+
+    if (!checkpoint && index > 2 && index % trial.hazardEvery === 0) {
+      const hazardX = x + 3;
+      if ((trial.id + index) % 3 === 0) {
+        trapSpikes.push({ x: hazardX, y: y - 1, w: 2, period: 1.55, onFrac: 0.42, phase: index * 0.41 });
+      } else {
+        spikes.push([hazardX, y - 1, 2]);
+      }
     }
-    if (index > 2 && index % 4 === 0) saws.push({ x: x + length - 2, y: Math.max(6, y - 3), r: 13 });
-    const gap = gaps[patternIndex] || 0;
-    if (gap) {
-      if (index % 3 === 1) movers.push({ x: x + length, y: Math.max(7, y - 1), w: 2, axis: "y", range: 2, speed: 38 + trial.id * 3, phase: index * 0.7 });
-      x += length + gap;
-    } else x += length;
+
+    if (!checkpoint && index > 4 && index % 7 === 0) {
+      saws.push({ x: x + length - 2, y: Math.max(6, y - 3), r: 12 });
+    }
+
+    if (index > 0 && index % trial.upperEvery === 0) {
+      const shelfY = Math.max(5, y - (trial.id >= 4 ? 4 : 3));
+      platforms.push([x + 2, shelfY, 3, 1]);
+      if (trial.id >= 3 && index % 2 === 0) {
+        movers.push({ x: x + length, y: Math.max(7, shelfY), w: 2, axis: "y", range: 2, speed: 34 + trial.id * 2, phase: index * 0.55 });
+      }
+    }
+
+    if (trial.ammo && index > 0 && index % 8 === 0) ammo.push([x + 2, y - 1]);
+    if (index > 0 && index % 12 === 6) fruits.push([x + 2, y - 1]);
+
+    const gap = trial.gaps[patternIndex] || 0;
+    if (gap && index % 3 === 1 && trial.id >= 3) {
+      movers.push({ x: x + length, y: Math.max(7, y - 1), w: 2, axis: "y", range: 2, speed: 38 + trial.id * 2, phase: index * 0.7 });
+    }
+    x += length + gap;
   }
-  // Floating upper lines create optional routes and force vertical movement.
-  for (let i = 0; i < Math.ceil(segmentCount / 4); i += 1) {
-    const px = 18 + Math.floor((i * segmentCount) / Math.ceil(segmentCount / 4)) * 10;
-    const py = 7 + ((i + trial.id) % 3);
-    platforms.push([px, py, 3, 1]);
-    if (i % 6 === 2 && trial.id >= 10) enemies.push({ x: px + 1, y: py, minX: px, maxX: px + 2, variant: i % 3 ? "standard" : "flyer" });
-  }
-  const width = x + 8;
-  const lastY = heights[(segmentCount - 1) % heights.length];
-  platforms.push([x, lastY, 8, ROWS - lastY]);
+
+  const finalY = trial.heights[(trial.segments - 1) % trial.heights.length];
+  platforms.push([x, finalY, 10, ROWS - finalY]);
   return {
-    id: trial.id, name: trial.title, theme: themes[(trial.id - 1) % themes.length], width,
-    spawn: [2, 15], platforms, movers, trapSpikes, spikes, saws, enemies,
-    stars: [], coins: [], ammo: [], fruits: [], checkpoints: [],
-    exit: [width - 4, lastY], accent: trial.accent, tutorials: [],
-    challenge: true, boss: null, secretOf: null, starOf: null,
+    id: trial.id,
+    name: trial.title,
+    theme: trial.theme,
+    width: x + 10,
+    spawn: [2, 15],
+    platforms,
+    movers,
+    trapSpikes,
+    spikes,
+    saws,
+    enemies,
+    stars: [],
+    coins: [],
+    ammo,
+    fruits,
+    checkpoints,
+    exit: [x + 6, finalY],
+    accent: trial.accent,
+    tutorials: [],
+    challenge: true,
+    boss: null,
+    secretOf: null,
+    starOf: null,
   };
 }

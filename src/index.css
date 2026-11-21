@@ -101,7 +101,9 @@
   --pa-magenta: #ff3d8b;
   --pa-gold: #ffd166;
   --pa-ink: #c6d2f2;
-  background: var(--pa-bg);
+  background:
+    radial-gradient(ellipse at 50% -12%, rgba(75, 227, 255, 0.075), transparent 42%),
+    linear-gradient(180deg, #090b16 0%, var(--pa-bg) 45%, #05060d 100%);
   color: var(--pa-ink);
   min-height: 100vh;
 }
@@ -209,15 +211,14 @@
 }
 
 .pa-bg-tile {
-  background-image: url("/game/bg/blue.png");
-  background-size: 128px 128px;
-  background-repeat: repeat;
-  image-rendering: pixelated;
-  animation: pa-pan 90s linear infinite;
+  background-image: url("/game/bg/eclipse-console.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .pa-bg-tile--purple {
-  background-image: url("/game/bg/purple.png");
+  background-image: url("/game/bg/eclipse-console.svg");
 }
 
 .pa-bg-tile.pa-bg-choice-blue {
@@ -282,10 +283,30 @@
 
 .pa-panel {
   position: relative;
-  background: linear-gradient(180deg, rgba(18, 20, 42, 0.94), rgba(9, 11, 24, 0.96));
-  border: 2px solid var(--pa-line);
-  box-shadow: 0 0 0 2px #05060d, 0 18px 50px rgba(0, 0, 0, 0.65), inset 0 0 40px rgba(75, 227, 255, 0.05);
-  clip-path: polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px));
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 205, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(155deg, rgba(19, 24, 45, 0.94), rgba(8, 11, 23, 0.97));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36), inset 0 1px rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(12px);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.pa-panel:hover {
+  border-color: rgba(75, 227, 255, 0.34);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42), 0 0 22px rgba(75, 227, 255, 0.06), inset 0 1px rgba(255, 255, 255, 0.045);
+}
+
+.pa-root button,
+.pa-root select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pa-root button:focus-visible,
+.pa-root select:focus-visible,
+.pa-root a:focus-visible {
+  outline: 2px solid var(--pa-cyan);
+  outline-offset: 3px;
 }
 
 .pa-corner {
@@ -299,10 +320,9 @@
 .pa-title {
   color: #f6f9ff;
   text-shadow:
-    3px 0 0 rgba(255, 61, 139, 0.75),
-    -3px 0 0 rgba(75, 227, 255, 0.75),
-    0 6px 0 #0b1024,
-    0 10px 34px rgba(75, 227, 255, 0.35);
+    1px 0 0 rgba(255, 61, 139, 0.52),
+    -1px 0 0 rgba(75, 227, 255, 0.52),
+    0 5px 24px rgba(75, 227, 255, 0.22);
 }
 
 .pa-cameo {

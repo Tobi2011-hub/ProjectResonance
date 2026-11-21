@@ -285,6 +285,9 @@ function buildStage(cfg) {
   let x = 8;
   let top = 15;
   const limit = W - 12;
+  const gapChance = Math.min(0.24, 0.14 + Math.max(0, cfg.hard || 0) * 0.08);
+  const minGap = (cfg.hard || 0) < 0.45 ? 2 : 3;
+  const maxGap = (cfg.hard || 0) < 0.75 ? 3 : 4;
 
   ground(0, 8, 15); // safe starting plateau
   let lastWasGap = false;
@@ -293,8 +296,8 @@ function buildStage(cfg) {
 
     // Gaps are capped at four tiles and NEVER chained back to back: a bridge
     // (mover or stepping stone) plus solid ground after it, always.
-    if (roll >= 0.8 && !lastWasGap) {
-      const gap = R(3, 4);
+    if (roll >= 1 - gapChance && !lastWasGap) {
+      const gap = R(minGap, maxGap);
       gaps.push({ start: x, len: gap });
       if (rand() < 0.5) {
         movers.push({ x, y: top, w: 3, axis: "x", range: Math.max(1, gap - 1), speed: R(36, 52), phase: rand() * 3 });
@@ -516,18 +519,18 @@ function buildStage(cfg) {
   };
 }
 
-// Long-form stages: roughly 1500–2100 tiles ≈ 5–7 minutes with combat,
-// climbing and the coin hunt. Width is the single most important number here.
+// Campaign routes now target a brisk 2–4 minute clear, with longer postgame
+// runs reserved for players who have learned the movement and combat systems.
 const MAIN = [
-  { id: 1, name: "Rustline Ridge", theme: "green", width: 1500, seed: 1101, hard: 0.15, challenge: true },
-  { id: 2, name: "Hollow Gallery", theme: "blue", width: 1580, seed: 2202, hard: 0.24 },
-  { id: 3, name: "Rustline Foundry", theme: "brown", width: 1660, seed: 3303, hard: 0.33, challenge: true },
-  { id: 4, name: "Neon Garden", theme: "purple", width: 1740, seed: 4404, hard: 0.4 },
-  { id: 5, name: "Greywater Docks", theme: "gray", width: 1820, seed: 5505, hard: 0.48, challenge: true },
-  { id: 6, name: "Rose Circuit", theme: "pink", width: 1900, seed: 6606, hard: 0.55 },
-  { id: 7, name: "Sunspire Run", theme: "yellow", width: 1980, seed: 7707, hard: 0.62 },
-  { id: 8, name: "Violet Rift", theme: "violet", width: 2050, seed: 8808, hard: 0.7 },
-  { id: 9, name: "Skyline Zero", theme: "cyan", width: 2120, seed: 9909, hard: 0.78 },
+  { id: 1, name: "Rustline Ridge", theme: "green", width: 840, seed: 1101, hard: 0.15, challenge: true },
+  { id: 2, name: "Hollow Gallery", theme: "blue", width: 900, seed: 2202, hard: 0.24 },
+  { id: 3, name: "Rustline Foundry", theme: "brown", width: 960, seed: 3303, hard: 0.33, challenge: true },
+  { id: 4, name: "Neon Garden", theme: "purple", width: 1020, seed: 4404, hard: 0.4 },
+  { id: 5, name: "Greywater Docks", theme: "gray", width: 1080, seed: 5505, hard: 0.48, challenge: true },
+  { id: 6, name: "Rose Circuit", theme: "pink", width: 1140, seed: 6606, hard: 0.55 },
+  { id: 7, name: "Sunspire Run", theme: "yellow", width: 1200, seed: 7707, hard: 0.62 },
+  { id: 8, name: "Violet Rift", theme: "violet", width: 1250, seed: 8808, hard: 0.7 },
+  { id: 9, name: "Skyline Zero", theme: "cyan", width: 1300, seed: 9909, hard: 0.78 },
 ];
 
 const STAGE_ACCENTS = {
@@ -571,13 +574,13 @@ const RIFTS = [
 ];
 
 const POSTGAME = [
-  { id: 19, name: "Ashen Causeway", theme: "brown", backdrop: "ash", width: 2450, seed: 1911, hard: 0.86 },
-  { id: 20, name: "Prism Break", theme: "purple", backdrop: "prism", width: 2560, seed: 2012, hard: 0.92 },
-  { id: 21, name: "Tempest Crown", theme: "cyan", backdrop: "tempest", width: 2670, seed: 2113, hard: 0.98 },
-  { id: 22, name: "Gilded Undertow", theme: "yellow", backdrop: "undertow", width: 2780, seed: 2214, hard: 1.04 },
-  { id: 23, name: "Frostline Collapse", theme: "blue", backdrop: "frost", width: 2890, seed: 2315, hard: 1.1 },
-  { id: 24, name: "The Dusk Engine", theme: "violet", backdrop: "dusk", width: 3000, seed: 2416, hard: 1.16 },
-  { id: 25, name: "Solar Rupture", theme: "pink", backdrop: "solar", width: 3110, seed: 2517, hard: 1.22 },
+  { id: 19, name: "Ashen Causeway", theme: "brown", backdrop: "ash", width: 1500, seed: 1911, hard: 0.86 },
+  { id: 20, name: "Prism Break", theme: "purple", backdrop: "prism", width: 1570, seed: 2012, hard: 0.92 },
+  { id: 21, name: "Tempest Crown", theme: "cyan", backdrop: "tempest", width: 1640, seed: 2113, hard: 0.98 },
+  { id: 22, name: "Gilded Undertow", theme: "yellow", backdrop: "undertow", width: 1710, seed: 2214, hard: 1.04 },
+  { id: 23, name: "Frostline Collapse", theme: "blue", backdrop: "frost", width: 1780, seed: 2315, hard: 1.1 },
+  { id: 24, name: "The Dusk Engine", theme: "violet", backdrop: "dusk", width: 1850, seed: 2416, hard: 1.16 },
+  { id: 25, name: "Solar Rupture", theme: "pink", backdrop: "solar", width: 1920, seed: 2517, hard: 1.22 },
 ].map((stage) => ({ ...stage, starCurrency: true, postgame: true }));
 
 const BOSS_ARENA_OFFSET = 260;
@@ -1176,6 +1179,28 @@ export function drawBackground(ctx, engine) {
     ctx.fillRect(Math.round(px), Math.round(py), 1, 2);
   }
   ctx.globalAlpha = 1;
+
+  // Eclipse Console atmosphere: faint instrument rings and a scan horizon sit
+  // behind level geometry, adding depth without covering platforms or hazards.
+  ctx.save();
+  ctx.globalAlpha = 0.105;
+  ctx.strokeStyle = "#8eece2";
+  ctx.lineWidth = 0.65;
+  const ringX = VIEW_W * 0.78 - ((camera.x * 0.025) % 96);
+  const ringY = VIEW_H * 0.24 - camera.y * 0.018;
+  for (let ring = 0; ring < 3; ring += 1) {
+    ctx.beginPath();
+    ctx.ellipse(ringX, ringY, 34 + ring * 19, 13 + ring * 8, -0.22, 0.12, Math.PI * 1.72);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.055;
+  ctx.beginPath();
+  ctx.moveTo(0, 108);
+  ctx.lineTo(VIEW_W, 108);
+  ctx.moveTo(0, 112);
+  ctx.lineTo(VIEW_W, 112);
+  ctx.stroke();
+  ctx.restore();
 }
 
 export function drawTerrain(ctx, engine) {
@@ -1802,6 +1827,14 @@ export function drawPlayer(ctx, engine) {
   const size = 32;
   const dx = Math.round(player.centerX - size / 2 - camera.x);
   const dy = Math.round(player.y + player.h - size);
+
+  // Soft signal bloom anchors the small pixel frame against the new void sky.
+  const bloom = ctx.createRadialGradient(dx + size / 2, dy + size / 2, 2, dx + size / 2, dy + size / 2, size * 0.82);
+  bloom.addColorStop(0, "rgba(86,239,217,0.12)");
+  bloom.addColorStop(0.55, "rgba(86,239,217,0.055)");
+  bloom.addColorStop(1, "rgba(86,239,217,0)");
+  ctx.fillStyle = bloom;
+  ctx.fillRect(dx - 10, dy - 10, size + 20, size + 20);
 
   afterimages.forEach((ghost) => {
     ctx.globalAlpha = Math.max(0, ghost.life / 0.22) * 0.35;
